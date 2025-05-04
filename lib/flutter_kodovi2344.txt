@@ -1,0 +1,489 @@
+﻿=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/maindart ===
+import 'package:flutter/material.dart';
+import 'app/router.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      routerConfig: appRouter,
+      theme: ThemeData(
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          titleTextStyle: TextStyle(color: Colors.black, fontSize: 20),
+          iconTheme: IconThemeData(color: Colors.black),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/app/routerdart ===
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../features/language/screens/language_select_screen.dart';
+import '../features/profile_setup/screens/profile_setup_screen.dart';
+import '../features/song_view/screens/song_view_screen.dart';
+
+final GoRouter appRouter = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/language',
+      builder: (context, state) => const LanguageSelectScreen(),
+    ),
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const ProfileSetupScreen(),
+    ),
+    GoRoute(
+      path: '/song-view',
+      builder: (context, state) => const SongViewScreen(),
+    ),
+    GoRoute(
+      path: '/',
+      redirect: (context, state) => '/language',
+    ),
+  ],
+);
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/language/screens/language_select_screendart ===
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+
+class LanguageSelectScreen extends StatelessWidget {
+  const LanguageSelectScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => SystemNavigator.pop(),
+        ),
+        title: const Text('Odaberi jezik'),
+        actions: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
+            child: ElevatedButton(
+              onPressed: () {
+                context.go('/profile');
+              },
+              child: const Text('SETUP MAPA I VEZA'),
+            ),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () {},
+              child: const Text('HRVATSKI'),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {},
+              child: const Text('ENGLISH'),
+            ),
+            const SizedBox(height: 40),
+            IconButton(
+              icon: const Icon(Icons.arrow_forward, size: 40),
+              onPressed: () {},
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/profile_setup/controllers/current_profile_loaderdart ===
+import 'dart:convert';
+import 'dart:io';
+
+class CurrentProfileLoader {
+  static Future<Map<String, dynamic>?> loadLastProfile() async {
+    final file = File('profiles.json');
+    if (!file.existsSync()) return null;
+
+    final content = await file.readAsString();
+    final profiles = List<Map<String, dynamic>>.from(jsonDecode(content));
+
+    // Vraća zadnji spremljeni (zadnji u listi)
+    if (profiles.isEmpty) return null;
+    return profiles.last;
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/profile_setup/controllers/profile_controllerdart ===
+import 'dart:convert';
+import 'dart:io';
+
+class ProfileController {
+  static const String fileName = 'profiles.json';
+
+  static Future<void> saveProfile({
+    required String name,
+    required String textFolder,
+    required String mediaFolder,
+    required String connection,
+  }) async {
+    final profile = {
+      'name': name,
+      'text_folder': textFolder,
+      'media_folder': mediaFolder,
+      'connection': connection,
+    };
+
+    final file = File(fileName);
+    List profiles = [];
+
+    if (file.existsSync()) {
+      final content = file.readAsStringSync();
+      profiles = jsonDecode(content);
+    }
+
+    profiles.removeWhere((p) => p['name'] == name);
+    profiles.add(profile);
+
+    await file.writeAsString(jsonEncode(profiles));
+  }
+
+  static Future<List<Map<String, dynamic>>> loadProfiles() async {
+    final file = File(fileName);
+    if (!file.existsSync()) return [];
+    final content = await file.readAsString();
+    final data = jsonDecode(content);
+    return List<Map<String, dynamic>>.from(data);
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/profile_setup/screens/profile_setup_screendart ===
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
+import '../controllers/profile_controller.dart';
+
+class ProfileSetupScreen extends StatefulWidget {
+  const ProfileSetupScreen({super.key});
+
+  @override
+  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+}
+
+class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  String? _selectedTextFolder;
+  String? _selectedMediaFolder;
+  String? _selectedConnection;
+
+  List<Map<String, dynamic>> _profiles = [];
+  Map<String, dynamic>? _selectedProfile;
+
+  Future<void> _loadProfiles() async {
+    final loaded = await ProfileController.loadProfiles();
+    setState(() {
+      _profiles = loaded;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfiles();
+  }
+
+  Future<void> _pickTextFolder() async {
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result != null) {
+      setState(() {
+        _selectedTextFolder = result;
+      });
+    }
+  }
+
+  Future<void> _pickMediaFolder() async {
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result != null) {
+      setState(() {
+        _selectedMediaFolder = result;
+      });
+    }
+  }
+
+  void _saveProfile() async {
+    final name = _nameController.text.trim();
+    final text = _selectedTextFolder;
+    final media = _selectedMediaFolder;
+    final conn = _selectedConnection;
+
+    if (name.isEmpty || text == null || media == null || conn == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Molimo popunite sve podatke.')),
+      );
+      return;
+    }
+
+    await ProfileController.saveProfile(
+      name: name,
+      textFolder: text,
+      mediaFolder: media,
+      connection: conn,
+    );
+
+    await _loadProfiles();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profil spremljen.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Postavljanje profila')),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Ime profila (max 7 znakova):'),
+            TextField(
+              controller: _nameController,
+              maxLength: 7,
+              decoration: const InputDecoration(hintText: 'Unesi ime'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _pickTextFolder,
+              child: Text(_selectedTextFolder ?? 'Odaberi mapu s tekstovima'),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _pickMediaFolder,
+              child: Text(_selectedMediaFolder ?? 'Odaberi prateću mapu'),
+            ),
+            const SizedBox(height: 20),
+            const Text('Odaberi vezu:'),
+            DropdownButton<String>(
+              isExpanded: true,
+              hint: const Text('Veza'),
+              value: _selectedConnection,
+              items: const [
+                DropdownMenuItem(value: 'WiFi', child: Text('WiFi')),
+                DropdownMenuItem(value: 'Hotspot', child: Text('Hotspot')),
+                DropdownMenuItem(value: 'Bluetooth', child: Text('Bluetooth')),
+                DropdownMenuItem(value: 'Nema', child: Text('Bez veze')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedConnection = value;
+                });
+              },
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _saveProfile,
+              child: const Text('SPREMI PROFIL'),
+            ),
+            const Divider(height: 40),
+            const Text('Dostupni profili:'),
+            for (var p in _profiles)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedProfile = p;
+                    });
+                  },
+                  child: Text(p['name']),
+                ),
+              ),
+            const SizedBox(height: 20),
+            if (_selectedProfile != null)
+              ElevatedButton(
+                onPressed: () {
+                  context.go('/song-view');
+                },
+                child: const Text('ULAZ'),
+              ),
+            const Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  iconSize: 48,
+                  onPressed: () {
+                    context.go('/language');
+                  },
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/screens/song_view_screendart ===
+import 'package:flutter/material.dart';
+import 'dart:io';
+import '../widgets/song_controls_widget.dart';
+import '../../profile_setup/controllers/current_profile_loader.dart';
+
+class SongViewScreen extends StatefulWidget {
+  const SongViewScreen({super.key});
+
+  @override
+  State<SongViewScreen> createState() => _SongViewScreenState();
+}
+
+class _SongViewScreenState extends State<SongViewScreen> {
+  List<String> _songLines = [];
+  String? _songName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFirstSongFromProfile();
+  }
+
+  Future<void> _loadFirstSongFromProfile() async {
+    final profile = await CurrentProfileLoader.loadLastProfile();
+    if (profile == null || profile['text_folder'] == null) return;
+
+    final dir = Directory(profile['text_folder']);
+    if (!dir.existsSync()) return;
+
+    final files = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.txt')).toList();
+    if (files.isEmpty) return;
+
+    final file = files.first;
+    final lines = await file.readAsLines();
+
+    setState(() {
+      _songLines = lines;
+      _songName = file.uri.pathSegments.last;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            //  NAJGORNJI RED  točno 10 dugmadi
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+                  ElevatedButton(onPressed: () {}, child: const Text('L')),
+                  ElevatedButton(onPressed: () {}, child: const Text('OUT')),
+                  IconButton(icon: const Icon(Icons.zoom_out), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.zoom_in), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.remove), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.add), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.settings), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.star_border), onPressed: () {}),
+                ],
+              ),
+            ),
+
+            const Divider(),
+
+            //  IME PJESME + strelice
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(icon: const Icon(Icons.arrow_back), onPressed: () {}),
+                  Text(_songName ?? 'Pjesma', style: const TextStyle(fontSize: 18)),
+                  IconButton(icon: const Icon(Icons.arrow_forward), onPressed: () {}),
+                ],
+              ),
+            ),
+
+            //  PRIKAZ PJESME
+            Expanded(
+              child: _songLines.isEmpty
+                  ? const Center(child: Text('Nema dostupnih pjesama.'))
+                  : Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: ListView(
+                        children: _songLines.map((line) {
+                          return Text(line, style: const TextStyle(fontSize: 18));
+                        }).toList(),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/widgets/song_controls_widgetdart ===
+import 'package:flutter/material.dart';
+
+class SongControlsWidget extends StatelessWidget {
+  const SongControlsWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
+        child: Row(
+          children: [
+            IconButton(icon: const Icon(Icons.search), onPressed: () {}),             // 
+            IconButton(icon: const Icon(Icons.remove), onPressed: () {}),             //  Transpose
+            IconButton(icon: const Icon(Icons.add), onPressed: () {}),                //  Transpose
+            IconButton(icon: const Icon(Icons.lock), onPressed: () {}),               //  Lokot
+            ElevatedButton(onPressed: () {}, child: const Text('OUT')),               // / Status
+            IconButton(icon: const Icon(Icons.zoom_out), onPressed: () {}),           //  Zoom -
+            IconButton(icon: const Icon(Icons.zoom_in), onPressed: () {}),            //  Zoom +
+            IconButton(icon: const Icon(Icons.edit), onPressed: () {}),               //  Edit
+            IconButton(icon: const Icon(Icons.settings), onPressed: () {}),           //  Settings
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
