@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "../screens/song_settings_screen.dart";
 import "../controllers/song_settings_controller.dart";
+import "../screens/song_edit_screen.dart";
 
 class SongControlsWidget extends StatelessWidget {
   final VoidCallback? onTransposeUp;
@@ -8,7 +9,9 @@ class SongControlsWidget extends StatelessWidget {
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
   final String? songName;
+  final String? filePath;
   final void Function()? onSettingsChanged;
+  final void Function()? onSongEdited;
 
   const SongControlsWidget({
     super.key,
@@ -17,7 +20,9 @@ class SongControlsWidget extends StatelessWidget {
     this.onZoomIn,
     this.onZoomOut,
     this.songName,
+    this.filePath,
     this.onSettingsChanged,
+    this.onSongEdited,
   });
 
   @override
@@ -35,7 +40,21 @@ class SongControlsWidget extends StatelessWidget {
             ElevatedButton(onPressed: () {}, child: const Text("OUT")),
             IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
             IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
-            IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                if (filePath == null) return;
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SongEditScreen(filePath: filePath!),
+                  ),
+                );
+                if (result == true && onSongEdited != null) {
+                  onSongEdited!();
+                }
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () async {

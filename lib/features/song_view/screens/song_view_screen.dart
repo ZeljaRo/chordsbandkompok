@@ -18,6 +18,7 @@ class _SongViewScreenState extends State<SongViewScreen> {
   int _currentIndex = 0;
   List<String> _songLines = [];
   String? _songName;
+  File? _currentFile;
   int _transposeSteps = 0;
 
   double _textFontSize = 18;
@@ -66,6 +67,7 @@ class _SongViewScreenState extends State<SongViewScreen> {
     setState(() {
       _songLines = lines;
       _songName = name;
+      _currentFile = file;
       _transposeSteps = 0;
       _loadSettingsForSong();
     });
@@ -102,6 +104,10 @@ class _SongViewScreenState extends State<SongViewScreen> {
   }
 
   void _onSettingsChanged() => _loadSettingsForSong();
+
+  void _refreshCurrentSong() {
+    _loadSongAt(_currentIndex);
+  }
 
   void _nextSong() {
     if (_currentIndex < _allSongs.length - 1) {
@@ -142,7 +148,9 @@ class _SongViewScreenState extends State<SongViewScreen> {
               onZoomIn: _zoomIn,
               onZoomOut: _zoomOut,
               songName: _songName,
+              filePath: _currentFile?.path,
               onSettingsChanged: _onSettingsChanged,
+              onSongEdited: _refreshCurrentSong,
             ),
             const Divider(),
             Padding(
