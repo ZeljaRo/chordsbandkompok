@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
-import 'dart:io';
-import '../widgets/song_controls_widget.dart';
-import '../../profile_setup/controllers/current_profile_loader.dart';
+import "package:flutter/material.dart";
+import "dart:io";
+import "../widgets/song_controls_widget.dart";
+import "../../profile_setup/controllers/current_profile_loader.dart";
+import "../utils/transpose_helper.dart";
+import "../utils/rich_song_parser.dart";
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -13,6 +15,7 @@ class SongViewScreen extends StatefulWidget {
 class _SongViewScreenState extends State<SongViewScreen> {
   List<String> _songLines = [];
   String? _songName;
+  int _transposeSteps = 0;
 
   @override
   void initState() {
@@ -39,17 +42,32 @@ class _SongViewScreenState extends State<SongViewScreen> {
     });
   }
 
+  void _transposeUp() {
+    setState(() => _transposeSteps++);
+  }
+
+  void _transposeDown() {
+    setState(() => _transposeSteps--);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final fullText = _songLines.join('\n');
+    final transposedText = fullText.split('\n').map((line) {
+      return TransposeHelper.transpose(line, _transposeSteps);
+    }).join('\n');
+
+    final spans = RichSongParser.parseSong(transposedText);
+
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // KORIŠTENJE PRAVOG WIDGETA
-            const SongControlsWidget(),
-
+            SongControlsWidget(
+              onTransposeUp: _transposeUp,
+              onTransposeDown: _transposeDown,
+            ),
             const Divider(),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
               child: Row(
@@ -61,17 +79,12 @@ class _SongViewScreenState extends State<SongViewScreen> {
                 ],
               ),
             ),
-
             Expanded(
               child: _songLines.isEmpty
                   ? const Center(child: Text('Nema dostupnih pjesama.'))
                   : Padding(
                       padding: const EdgeInsets.all(12.0),
-                      child: ListView(
-                        children: _songLines.map((line) {
-                          return Text(line, style: const TextStyle(fontSize: 18));
-                        }).toList(),
-                      ),
+                      child: RichText(text: TextSpan(children: spans)),
                     ),
             ),
           ],

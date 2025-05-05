@@ -1,7 +1,15 @@
-import 'package:flutter/material.dart';
+import "../screens/song_settings_screen.dart";
+import "package:flutter/material.dart";
 
 class SongControlsWidget extends StatelessWidget {
-  const SongControlsWidget({super.key});
+  final VoidCallback? onTransposeUp;
+  final VoidCallback? onTransposeDown;
+
+  const SongControlsWidget({
+    super.key,
+    this.onTransposeUp,
+    this.onTransposeDown,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -11,15 +19,33 @@ class SongControlsWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
         child: Row(
           children: [
-            IconButton(icon: const Icon(Icons.search), onPressed: () {}),             // 
-            IconButton(icon: const Icon(Icons.remove), onPressed: () {}),             //  Transpose
-            IconButton(icon: const Icon(Icons.add), onPressed: () {}),                //  Transpose
-            IconButton(icon: const Icon(Icons.lock), onPressed: () {}),               //  Lokot
-            ElevatedButton(onPressed: () {}, child: const Text('OUT')),               // / Status
-            IconButton(icon: const Icon(Icons.zoom_out), onPressed: () {}),           //  Zoom -
-            IconButton(icon: const Icon(Icons.zoom_in), onPressed: () {}),            //  Zoom +
-            IconButton(icon: const Icon(Icons.edit), onPressed: () {}),               //  Edit
-            IconButton(icon: const Icon(Icons.settings), onPressed: () {}),           //  Settings
+            IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.remove), onPressed: onTransposeDown),  // Transpose -
+            IconButton(icon: const Icon(Icons.add), onPressed: onTransposeUp),       // Transpose +
+            IconButton(icon: const Icon(Icons.lock), onPressed: () {}),
+            ElevatedButton(onPressed: () {}, child: const Text("OUT")),
+            IconButton(icon: const Icon(Icons.zoom_out), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.zoom_in), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SongSettingsScreen(
+                      textFontSize: 18,
+                      chordFontSize: 20,
+                      textColor: Colors.black,
+                      chordColor: Colors.blue,
+                    ),
+                  ),
+                );
+                if (result != null) {
+                  // Ovdje æeš kasnije upisivati povratne vrijednosti
+                }
+              },
+            ),
           ],
         ),
       ),
