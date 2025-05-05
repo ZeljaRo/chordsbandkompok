@@ -4,6 +4,7 @@ import "../widgets/song_controls_widget.dart";
 import "../../profile_setup/controllers/current_profile_loader.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
+import "../controllers/song_settings_controller.dart";
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -13,41 +14,107 @@ class SongViewScreen extends StatefulWidget {
 }
 
 class _SongViewScreenState extends State<SongViewScreen> {
+  List<File> _allSongs = [];
+  int _currentIndex = 0;
   List<String> _songLines = [];
   String? _songName;
   int _transposeSteps = 0;
 
+  double _textFontSize = 18;
+  double _chordFontSize = 20;
+  Color _textColor = Colors.black;
+  Color _chordColor = Colors.blue;
+
   @override
   void initState() {
     super.initState();
-    _loadFirstSongFromProfile();
+    SongSettingsController.loadSettings().then((_) {
+      _loadSongsFromProfile();
+    });
   }
 
-  Future<void> _loadFirstSongFromProfile() async {
+  Future<void> _loadSongsFromProfile() async {
     final profile = await CurrentProfileLoader.loadLastProfile();
     if (profile == null || profile['text_folder'] == null) return;
 
     final dir = Directory(profile['text_folder']);
     if (!dir.existsSync()) return;
 
-    final files = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.txt')).toList();
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.toLowerCase().endsWith('.txt'))
+        .toList();
+
     if (files.isEmpty) return;
 
-    final file = files.first;
+    setState(() {
+      _allSongs = files;
+      _currentIndex = 0;
+    });
+
+    _loadSongAt(_currentIndex);
+  }
+
+  Future<void> _loadSongAt(int index) async {
+    if (index < 0 || index >= _allSongs.length) return;
+
+    final file = _allSongs[index];
     final lines = await file.readAsLines();
+    final name = file.uri.pathSegments.last;
 
     setState(() {
       _songLines = lines;
-      _songName = file.uri.pathSegments.last;
+      _songName = name;
+      _transposeSteps = 0;
+      _loadSettingsForSong();
     });
   }
 
-  void _transposeUp() {
-    setState(() => _transposeSteps++);
+  void _loadSettingsForSong() {
+    if (_songName == null) return;
+    setState(() {
+      _textFontSize = SongSettingsController.getTextFontSize(_songName!);
+      _chordFontSize = SongSettingsController.getChordFontSize(_songName!);
+      _textColor = SongSettingsController.getTextColor(_songName!);
+      _chordColor = SongSettingsController.getChordColor(_songName!);
+    });
   }
 
-  void _transposeDown() {
-    setState(() => _transposeSteps--);
+  void _transposeUp() => setState(() => _transposeSteps++);
+  void _transposeDown() => setState(() => _transposeSteps--);
+
+  void _zoomIn() {
+    if (_songName == null) return;
+    setState(() {
+      _textFontSize += 1;
+      SongSettingsController.setTextFontSize(_songName!, _textFontSize);
+    });
+  }
+
+  void _zoomOut() {
+    if (_songName == null) return;
+    setState(() {
+      _textFontSize -= 1;
+      if (_textFontSize < 10) _textFontSize = 10;
+      SongSettingsController.setTextFontSize(_songName!, _textFontSize);
+    });
+  }
+
+  void _onSettingsChanged() => _loadSettingsForSong();
+
+  void _nextSong() {
+    if (_currentIndex < _allSongs.length - 1) {
+      _currentIndex++;
+      _loadSongAt(_currentIndex);
+    }
+  }
+
+  void _previousSong() {
+    if (_currentIndex > 0) {
+      _currentIndex--;
+      _loadSongAt(_currentIndex);
+    }
   }
 
   @override
@@ -57,7 +124,13 @@ class _SongViewScreenState extends State<SongViewScreen> {
       return TransposeHelper.transpose(line, _transposeSteps);
     }).join('\n');
 
-    final spans = RichSongParser.parseSong(transposedText);
+    final spans = RichSongParser.parseSong(
+      transposedText,
+      textFontSize: _textFontSize,
+      chordFontSize: _chordFontSize,
+      textColor: _textColor,
+      chordColor: _chordColor,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -66,6 +139,10 @@ class _SongViewScreenState extends State<SongViewScreen> {
             SongControlsWidget(
               onTransposeUp: _transposeUp,
               onTransposeDown: _transposeDown,
+              onZoomIn: _zoomIn,
+              onZoomOut: _zoomOut,
+              songName: _songName,
+              onSettingsChanged: _onSettingsChanged,
             ),
             const Divider(),
             Padding(
@@ -73,9 +150,9 @@ class _SongViewScreenState extends State<SongViewScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(icon: const Icon(Icons.arrow_back), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousSong),
                   Text(_songName ?? 'Pjesma', style: const TextStyle(fontSize: 18)),
-                  IconButton(icon: const Icon(Icons.arrow_forward), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _nextSong),
                 ],
               ),
             ),

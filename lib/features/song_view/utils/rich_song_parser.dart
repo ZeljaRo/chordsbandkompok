@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import "package:flutter/material.dart";
 
 class RichSongParser {
   static List<TextSpan> parseSong(
@@ -8,35 +8,30 @@ class RichSongParser {
     Color textColor = Colors.black,
     Color chordColor = Colors.blue,
   }) {
-    List<TextSpan> spans = [];
-    final regex = RegExp(r'(\\(.*?\\)|\\[.*?\\])');
-    final lines = text.split('\n');
+    final regex = RegExp(r'(\(.*?\))');
+    final spans = <TextSpan>[];
 
-    for (var line in lines) {
+    text.split('\n').forEach((line) {
       final matches = regex.allMatches(line);
       int lastMatchEnd = 0;
 
       for (final match in matches) {
         if (match.start > lastMatchEnd) {
-          final normalText = line.substring(lastMatchEnd, match.start);
           spans.add(TextSpan(
-            text: normalText,
+            text: line.substring(lastMatchEnd, match.start),
             style: TextStyle(
-              color: textColor,
               fontSize: textFontSize,
-              height: 1.4,
+              color: textColor,
             ),
           ));
         }
 
-        final chordText = match.group(0)!;
         spans.add(TextSpan(
-          text: chordText,
+          text: match.group(0),
           style: TextStyle(
+            fontSize: chordFontSize,
             color: chordColor,
             fontWeight: FontWeight.bold,
-            fontSize: chordFontSize,
-            height: 1.4,
           ),
         ));
 
@@ -44,19 +39,17 @@ class RichSongParser {
       }
 
       if (lastMatchEnd < line.length) {
-        final normalText = line.substring(lastMatchEnd);
         spans.add(TextSpan(
-          text: normalText,
+          text: line.substring(lastMatchEnd),
           style: TextStyle(
-            color: textColor,
             fontSize: textFontSize,
-            height: 1.4,
+            color: textColor,
           ),
         ));
       }
 
       spans.add(const TextSpan(text: '\n'));
-    }
+    });
 
     return spans;
   }

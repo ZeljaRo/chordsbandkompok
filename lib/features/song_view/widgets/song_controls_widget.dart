@@ -1,14 +1,23 @@
-import "../screens/song_settings_screen.dart";
 import "package:flutter/material.dart";
+import "../screens/song_settings_screen.dart";
+import "../controllers/song_settings_controller.dart";
 
 class SongControlsWidget extends StatelessWidget {
   final VoidCallback? onTransposeUp;
   final VoidCallback? onTransposeDown;
+  final VoidCallback? onZoomIn;
+  final VoidCallback? onZoomOut;
+  final String? songName;
+  final void Function()? onSettingsChanged;
 
   const SongControlsWidget({
     super.key,
     this.onTransposeUp,
     this.onTransposeDown,
+    this.onZoomIn,
+    this.onZoomOut,
+    this.songName,
+    this.onSettingsChanged,
   });
 
   @override
@@ -20,29 +29,41 @@ class SongControlsWidget extends StatelessWidget {
         child: Row(
           children: [
             IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.remove), onPressed: onTransposeDown),  // Transpose -
-            IconButton(icon: const Icon(Icons.add), onPressed: onTransposeUp),       // Transpose +
+            IconButton(icon: const Icon(Icons.remove), onPressed: onTransposeDown),
+            IconButton(icon: const Icon(Icons.add), onPressed: onTransposeUp),
             IconButton(icon: const Icon(Icons.lock), onPressed: () {}),
             ElevatedButton(onPressed: () {}, child: const Text("OUT")),
-            IconButton(icon: const Icon(Icons.zoom_out), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.zoom_in), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
+            IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
             IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () async {
+                if (songName == null) return;
+
+                final currentTextSize = SongSettingsController.getTextFontSize(songName!);
+                final currentChordSize = SongSettingsController.getChordFontSize(songName!);
+                final currentTextColor = SongSettingsController.getTextColor(songName!);
+                final currentChordColor = SongSettingsController.getChordColor(songName!);
+
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => SongSettingsScreen(
-                      textFontSize: 18,
-                      chordFontSize: 20,
-                      textColor: Colors.black,
-                      chordColor: Colors.blue,
+                      textFontSize: currentTextSize,
+                      chordFontSize: currentChordSize,
+                      textColor: currentTextColor,
+                      chordColor: currentChordColor,
                     ),
                   ),
                 );
-                if (result != null) {
-                  // Ovdje æeš kasnije upisivati povratne vrijednosti
+
+                if (result != null && result is Map) {
+                  SongSettingsController.setTextFontSize(songName!, result['textFontSize']);
+                  SongSettingsController.setChordFontSize(songName!, result['chordFontSize']);
+                  SongSettingsController.setTextColor(songName!, result['textColor']);
+                  SongSettingsController.setChordColor(songName!, result['chordColor']);
+                  if (onSettingsChanged != null) onSettingsChanged!();
                 }
               },
             ),
