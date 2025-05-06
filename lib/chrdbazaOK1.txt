@@ -733,7 +733,13 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
 
 
 === C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/screens/song_view_screendart ===
-import 'package:flutter/material.dart';
+import "package:flutter/material.dart";
+import "dart:io";
+import "../widgets/song_controls_widget.dart";
+import "../../profile_setup/controllers/current_profile_loader.dart";
+import "../utils/transpose_helper.dart";
+import "../utils/rich_song_parser.dart";
+import "../controllers/song_settings_controller.dart";
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -743,114 +749,166 @@ class SongViewScreen extends StatefulWidget {
 }
 
 class _SongViewScreenState extends State<SongViewScreen> {
-  double textFontSize = 18;
-  double chordFontSize = 20;
-  bool isLeader = false;
-  bool isLocked = false;
-  bool isListening = false;
+  List<File> _allSongs = [];
+  int _currentIndex = 0;
+  List<String> _songLines = [];
+  String? _songName;
+  File? _currentFile;
+  int _transposeSteps = 0;
 
-  void zoomInText() {
-    setState(() {
-      textFontSize += 2;
-      chordFontSize += 2;
+  double _textFontSize = 18;
+  double _chordFontSize = 20;
+  Color _textColor = Colors.black;
+  Color _chordColor = Colors.blue;
+
+  @override
+  void initState() {
+    super.initState();
+    SongSettingsController.loadSettings().then((_) {
+      _loadSongsFromProfile();
     });
   }
 
-  void zoomOutText() {
+  Future<void> _loadSongsFromProfile() async {
+    final profile = await CurrentProfileLoader.loadLastProfile();
+    if (profile == null || profile['text_folder'] == null) return;
+
+    final dir = Directory(profile['text_folder']);
+    if (!dir.existsSync()) return;
+
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.toLowerCase().endsWith('.txt'))
+        .toList();
+
+    if (files.isEmpty) return;
+
     setState(() {
-      textFontSize = (textFontSize - 2).clamp(10, 60);
-      chordFontSize = (chordFontSize - 2).clamp(10, 60);
+      _allSongs = files;
+      _currentIndex = 0;
+    });
+
+    _loadSongAt(_currentIndex);
+  }
+
+  Future<void> _loadSongAt(int index) async {
+    if (index < 0 || index >= _allSongs.length) return;
+
+    final file = _allSongs[index];
+    final lines = await file.readAsLines();
+    final name = file.uri.pathSegments.last;
+
+    setState(() {
+      _songLines = lines;
+      _songName = name;
+      _currentFile = file;
+      _transposeSteps = 0;
+      _loadSettingsForSong();
     });
   }
 
-  void transposeUp() {
-    // implementacija već postoji
-  }
-
-  void transposeDown() {
-    // implementacija već postoji
-  }
-
-  void editSong() {
-    // otvori editor ako postoji
-  }
-
-  void openSettings() {
-    // otvori postavke boja/fonta
-  }
-
-  void toggleLeader() {
+  void _loadSettingsForSong() {
+    if (_songName == null) return;
     setState(() {
-      isLeader = !isLeader;
+      _textFontSize = SongSettingsController.getTextFontSize(_songName!);
+      _chordFontSize = SongSettingsController.getChordFontSize(_songName!);
+      _textColor = SongSettingsController.getTextColor(_songName!);
+      _chordColor = SongSettingsController.getChordColor(_songName!);
     });
   }
 
-  void toggleLock() {
+  void _transposeUp() => setState(() => _transposeSteps++);
+  void _transposeDown() => setState(() => _transposeSteps--);
+
+  void _zoomIn() {
+    if (_songName == null) return;
     setState(() {
-      isLocked = !isLocked;
+      _textFontSize += 1;
+      SongSettingsController.setTextFontSize(_songName!, _textFontSize);
     });
   }
 
-  void toggleListening() {
+  void _zoomOut() {
+    if (_songName == null) return;
     setState(() {
-      isListening = !isListening;
+      _textFontSize -= 1;
+      if (_textFontSize < 10) _textFontSize = 10;
+      SongSettingsController.setTextFontSize(_songName!, _textFontSize);
     });
   }
 
-  void openTeamPanel() {
-    // otvori timsko sučelje
+  void _onSettingsChanged() => _loadSettingsForSong();
+
+  void _refreshCurrentSong() {
+    _loadSongAt(_currentIndex);
   }
 
-  void openSearch() {
-    // otvori pretragu ako postoji
+  void _nextSong() {
+    if (_currentIndex < _allSongs.length - 1) {
+      _currentIndex++;
+      _loadSongAt(_currentIndex);
+    }
   }
 
-  void goBack() {
-    Navigator.pop(context);
+  void _previousSong() {
+    if (_currentIndex > 0) {
+      _currentIndex--;
+      _loadSongAt(_currentIndex);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final fullText = _songLines.join('\n');
+    final transposedText = fullText.split('\n').map((line) {
+      return TransposeHelper.transpose(line, _transposeSteps);
+    }).join('\n');
+
+    final spans = RichSongParser.parseSong(
+      transposedText,
+      textFontSize: _textFontSize,
+      chordFontSize: _chordFontSize,
+      textColor: _textColor,
+      chordColor: _chordColor,
+    );
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Pregled pjesme')),
-      body: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              IconButton(icon: const Icon(Icons.search), tooltip: 'Pretraga', onPressed: openSearch),
-              IconButton(icon: const Icon(Icons.arrow_back), tooltip: 'Natrag', onPressed: goBack),
-              TextButton(onPressed: toggleLeader, child: const Text('L')),
-              TextButton(onPressed: toggleListening, child: Text(isListening ? 'IN' : 'OUT')),
-              IconButton(icon: const Icon(Icons.zoom_out), tooltip: 'Zoom -', onPressed: zoomOutText),
-              IconButton(icon: const Icon(Icons.zoom_in), tooltip: 'Zoom +', onPressed: zoomInText),
-              IconButton(icon: const Icon(Icons.remove), tooltip: 'Transponiraj dolje', onPressed: transposeDown),
-              IconButton(icon: const Icon(Icons.add), tooltip: 'Transponiraj gore', onPressed: transposeUp),
-              IconButton(icon: const Icon(Icons.edit), tooltip: 'Uredi pjesmu', onPressed: editSong),
-              IconButton(icon: const Icon(Icons.settings), tooltip: 'Postavke', onPressed: openSettings),
-              IconButton(icon: const Icon(Icons.star_border), tooltip: 'Tim', onPressed: openTeamPanel),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+      body: SafeArea(
+        child: Column(
+          children: [
+            SongControlsWidget(
+              onTransposeUp: _transposeUp,
+              onTransposeDown: _transposeDown,
+              onZoomIn: _zoomIn,
+              onZoomOut: _zoomOut,
+              songName: _songName,
+              filePath: _currentFile?.path,
+              onSettingsChanged: _onSettingsChanged,
+              onSongEdited: _refreshCurrentSong,
+            ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Naslov pjesme',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Ovdje ide sadržaj pjesme...',
-                    style: TextStyle(fontSize: textFontSize),
-                  ),
+                  IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousSong),
+                  Text(_songName ?? 'Pjesma', style: const TextStyle(fontSize: 18)),
+                  IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _nextSong),
                 ],
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: _songLines.isEmpty
+                  ? const Center(child: Text('Nema dostupnih pjesama.'))
+                  : Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: RichText(text: TextSpan(children: spans)),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -859,7 +917,7 @@ class _SongViewScreenState extends State<SongViewScreen> {
 
 
 === C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/utils/rich_song_parserdart ===
-import 'package:flutter/material.dart';
+import "package:flutter/material.dart";
 
 class RichSongParser {
   static List<TextSpan> parseSong(
@@ -869,35 +927,30 @@ class RichSongParser {
     Color textColor = Colors.black,
     Color chordColor = Colors.blue,
   }) {
-    List<TextSpan> spans = [];
-    final regex = RegExp(r'(\\(.*?\\)|\\[.*?\\])');
-    final lines = text.split('\n');
+    final regex = RegExp(r'(\(.*?\))');
+    final spans = <TextSpan>[];
 
-    for (var line in lines) {
+    text.split('\n').forEach((line) {
       final matches = regex.allMatches(line);
       int lastMatchEnd = 0;
 
       for (final match in matches) {
         if (match.start > lastMatchEnd) {
-          final normalText = line.substring(lastMatchEnd, match.start);
           spans.add(TextSpan(
-            text: normalText,
+            text: line.substring(lastMatchEnd, match.start),
             style: TextStyle(
-              color: textColor,
               fontSize: textFontSize,
-              height: 1.4,
+              color: textColor,
             ),
           ));
         }
 
-        final chordText = match.group(0)!;
         spans.add(TextSpan(
-          text: chordText,
+          text: match.group(0),
           style: TextStyle(
+            fontSize: chordFontSize,
             color: chordColor,
             fontWeight: FontWeight.bold,
-            fontSize: chordFontSize,
-            height: 1.4,
           ),
         ));
 
@@ -905,19 +958,17 @@ class RichSongParser {
       }
 
       if (lastMatchEnd < line.length) {
-        final normalText = line.substring(lastMatchEnd);
         spans.add(TextSpan(
-          text: normalText,
+          text: line.substring(lastMatchEnd),
           style: TextStyle(
-            color: textColor,
             fontSize: textFontSize,
-            height: 1.4,
+            color: textColor,
           ),
         ));
       }
 
       spans.add(const TextSpan(text: '\n'));
-    }
+    });
 
     return spans;
   }
@@ -925,25 +976,64 @@ class RichSongParser {
 
 
 
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/utils/transpose_helperdart ===
+class TransposeHelper {
+  static final List<String> _notes = [
+    'C', 'C#', 'D', 'D#', 'E', 'F',
+    'F#', 'G', 'G#', 'A', 'A#', 'B'
+  ];
+
+  static String transpose(String line, int steps) {
+    final regex = RegExp(r'\(([A-G][#b]?[^)]*)\)');
+    return line.replaceAllMapped(regex, (match) {
+      final full = match.group(0)!;
+      final chord = match.group(1)!;
+      final transposed = _transposeChord(chord, steps);
+      return '($transposed)';
+    });
+  }
+
+  static String _transposeChord(String chord, int steps) {
+    for (final note in _notes) {
+      if (chord.startsWith(note)) {
+        final index = _notes.indexOf(note);
+        final newIndex = (index + steps) % 12;
+        final transposedNote = _notes[newIndex < 0 ? newIndex + 12 : newIndex];
+        return transposedNote + chord.substring(note.length);
+      }
+    }
+    return chord;
+  }
+}
+
+
+
 === C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/widgets/song_controls_widgetdart ===
-import 'package:flutter/material.dart';
+import "package:flutter/material.dart";
+import "../screens/song_settings_screen.dart";
+import "../controllers/song_settings_controller.dart";
+import "../screens/song_edit_screen.dart";
 
 class SongControlsWidget extends StatelessWidget {
-  final VoidCallback onZoomIn;
-  final VoidCallback onZoomOut;
-  final VoidCallback onEdit;
-  final VoidCallback onSettings;
+  final VoidCallback? onTransposeUp;
+  final VoidCallback? onTransposeDown;
+  final VoidCallback? onZoomIn;
+  final VoidCallback? onZoomOut;
+  final String? songName;
   final String? filePath;
-  final VoidCallback onRefresh;
+  final void Function()? onSettingsChanged;
+  final void Function()? onSongEdited;
 
   const SongControlsWidget({
     super.key,
-    required this.onZoomIn,
-    required this.onZoomOut,
-    required this.onEdit,
-    required this.onSettings,
-    required this.filePath,
-    required this.onRefresh,
+    this.onTransposeUp,
+    this.onTransposeDown,
+    this.onZoomIn,
+    this.onZoomOut,
+    this.songName,
+    this.filePath,
+    this.onSettingsChanged,
+    this.onSongEdited,
   });
 
   @override
@@ -955,12 +1045,58 @@ class SongControlsWidget extends StatelessWidget {
         child: Row(
           children: [
             IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.remove), onPressed: onZoomOut),
-            IconButton(icon: const Icon(Icons.add), onPressed: onZoomIn),
+            IconButton(icon: const Icon(Icons.remove), onPressed: onTransposeDown),
+            IconButton(icon: const Icon(Icons.add), onPressed: onTransposeUp),
             IconButton(icon: const Icon(Icons.lock), onPressed: () {}),
-            ElevatedButton(onPressed: () {}, child: const Text('OUT')),
-            IconButton(icon: const Icon(Icons.edit), onPressed: onEdit),
-            IconButton(icon: const Icon(Icons.settings), onPressed: onSettings),
+            ElevatedButton(onPressed: () {}, child: const Text("OUT")),
+            IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
+            IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                if (filePath == null) return;
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SongEditScreen(filePath: filePath!),
+                  ),
+                );
+                if (result == true && onSongEdited != null) {
+                  onSongEdited!();
+                }
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () async {
+                if (songName == null) return;
+
+                final currentTextSize = SongSettingsController.getTextFontSize(songName!);
+                final currentChordSize = SongSettingsController.getChordFontSize(songName!);
+                final currentTextColor = SongSettingsController.getTextColor(songName!);
+                final currentChordColor = SongSettingsController.getChordColor(songName!);
+
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SongSettingsScreen(
+                      textFontSize: currentTextSize,
+                      chordFontSize: currentChordSize,
+                      textColor: currentTextColor,
+                      chordColor: currentChordColor,
+                    ),
+                  ),
+                );
+
+                if (result != null && result is Map) {
+                  SongSettingsController.setTextFontSize(songName!, result['textFontSize']);
+                  SongSettingsController.setChordFontSize(songName!, result['chordFontSize']);
+                  SongSettingsController.setTextColor(songName!, result['textColor']);
+                  SongSettingsController.setChordColor(songName!, result['chordColor']);
+                  if (onSettingsChanged != null) onSettingsChanged!();
+                }
+              },
+            ),
           ],
         ),
       ),

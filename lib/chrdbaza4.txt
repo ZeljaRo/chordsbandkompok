@@ -427,6 +427,18 @@ class SongSettingsController {
     saveSettings();
   }
 
+  // NOVO: attachment getter
+  static String? getAttachment(String songName) {
+    return _settings[songName]?['attachment'];
+  }
+
+  // NOVO: attachment setter
+  static void setAttachment(String songName, String fileName) {
+    _settings[songName] ??= {};
+    _settings[songName]['attachment'] = fileName;
+    saveSettings();
+  }
+
   static String _colorToHex(Color color) {
     return '#${color.value.toRadixString(16).padLeft(8, '0')}';
   }
@@ -740,6 +752,7 @@ import "../../profile_setup/controllers/current_profile_loader.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
+import '../widgets/attachment_button.dart';
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -753,6 +766,7 @@ class _SongViewScreenState extends State<SongViewScreen> {
   int _currentIndex = 0;
   List<String> _songLines = [];
   String? _songName;
+  File? _currentFile;
   int _transposeSteps = 0;
 
   double _textFontSize = 18;
@@ -801,6 +815,7 @@ class _SongViewScreenState extends State<SongViewScreen> {
     setState(() {
       _songLines = lines;
       _songName = name;
+      _currentFile = file;
       _transposeSteps = 0;
       _loadSettingsForSong();
     });
@@ -837,6 +852,10 @@ class _SongViewScreenState extends State<SongViewScreen> {
   }
 
   void _onSettingsChanged() => _loadSettingsForSong();
+
+  void _refreshCurrentSong() {
+    _loadSongAt(_currentIndex);
+  }
 
   void _nextSong() {
     if (_currentIndex < _allSongs.length - 1) {
@@ -877,7 +896,9 @@ class _SongViewScreenState extends State<SongViewScreen> {
               onZoomIn: _zoomIn,
               onZoomOut: _zoomOut,
               songName: _songName,
+              filePath: _currentFile?.path,
               onSettingsChanged: _onSettingsChanged,
+              onSongEdited: _refreshCurrentSong,
             ),
             const Divider(),
             Padding(
@@ -1000,10 +1021,74 @@ class TransposeHelper {
 
 
 
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/widgets/attachment_buttondart ===
+import 'dart:io';
+import 'package:flutter/material.dart';
+import '../../profile_setup/controllers/current_profile_loader.dart';
+import '../controllers/song_settings_controller.dart';
+
+class AttachmentButton extends StatelessWidget {
+  final String? songName;
+
+  const AttachmentButton({super.key, this.songName});
+
+  @override
+  Widget build(BuildContext context) {
+    final fileName = songName != null
+        ? SongSettingsController.getAttachment(songName!)
+        : null;
+
+    return Tooltip(
+      message: fileName ?? 'Nema pratećeg fajla',
+      child: IconButton(
+        icon: const Icon(Icons.attach_file),
+        onPressed: () async {
+          final profile = await CurrentProfileLoader.loadLastProfile();
+          if (profile == null || profile['media_folder'] == null) return;
+
+          final dir = Directory(profile['media_folder']);
+          if (!dir.existsSync()) return;
+
+          final files = dir
+              .listSync()
+              .whereType<File>()
+              .map((f) => f.path.split(Platform.pathSeparator).last)
+              .toList();
+
+          if (files.isEmpty) return;
+
+          final selected = await showDialog<String>(
+            context: context,
+            builder: (ctx) => SimpleDialog(
+              title: const Text('Odaberi prateći fajl'),
+              children: files.map((file) {
+                return SimpleDialogOption(
+                  child: Text(file),
+                  onPressed: () {
+                    Navigator.pop(ctx, file);
+                  },
+                );
+              }).toList(),
+            ),
+          );
+
+          if (selected != null && songName != null) {
+            SongSettingsController.setAttachment(songName!, selected);
+          }
+        },
+      ),
+    );
+  }
+}
+
+
+
 === C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/widgets/song_controls_widgetdart ===
 import "package:flutter/material.dart";
 import "../screens/song_settings_screen.dart";
 import "../controllers/song_settings_controller.dart";
+import "../screens/song_edit_screen.dart";
+import "attachment_button.dart";
 
 class SongControlsWidget extends StatelessWidget {
   final VoidCallback? onTransposeUp;
@@ -1011,7 +1096,9 @@ class SongControlsWidget extends StatelessWidget {
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
   final String? songName;
+  final String? filePath;
   final void Function()? onSettingsChanged;
+  final void Function()? onSongEdited;
 
   const SongControlsWidget({
     super.key,
@@ -1020,7 +1107,9 @@ class SongControlsWidget extends StatelessWidget {
     this.onZoomIn,
     this.onZoomOut,
     this.songName,
+    this.filePath,
     this.onSettingsChanged,
+    this.onSongEdited,
   });
 
   @override
@@ -1038,7 +1127,26 @@ class SongControlsWidget extends StatelessWidget {
             ElevatedButton(onPressed: () {}, child: const Text("OUT")),
             IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
             IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
-            IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
+
+            AttachmentButton(
+              songName: songName,
+            ),
+
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                if (filePath == null) return;
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SongEditScreen(filePath: filePath!),
+                  ),
+                );
+                if (result == true && onSongEdited != null) {
+                  onSongEdited!();
+                }
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () async {

@@ -740,6 +740,7 @@ import "../../profile_setup/controllers/current_profile_loader.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
+import '../widgets/attachment_button.dart';
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -838,6 +839,12 @@ class _SongViewScreenState extends State<SongViewScreen> {
     });
   }
 
+  void _onSettingsChanged() => _loadSettingsForSong();
+
+  void _refreshCurrentSong() {
+    _loadSongAt(_currentIndex);
+  }
+
   void _nextSong() {
     if (_currentIndex < _allSongs.length - 1) {
       _currentIndex++;
@@ -851,8 +858,6 @@ class _SongViewScreenState extends State<SongViewScreen> {
       _loadSongAt(_currentIndex);
     }
   }
-
-  void _onSettingsChanged() => _loadSettingsForSong();
 
   @override
   Widget build(BuildContext context) {
@@ -873,14 +878,26 @@ class _SongViewScreenState extends State<SongViewScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                AttachmentButton(
+                  fileName: "note123.pdf",
+                  onPressed: () {
+                    // otvaranje kasnije
+                  },
+                ),
+              ],
+            ),
             SongControlsWidget(
               onTransposeUp: _transposeUp,
               onTransposeDown: _transposeDown,
               onZoomIn: _zoomIn,
               onZoomOut: _zoomOut,
               songName: _songName,
+              filePath: _currentFile?.path,
               onSettingsChanged: _onSettingsChanged,
-              
+              onSongEdited: _refreshCurrentSong,
             ),
             const Divider(),
             Padding(
@@ -1003,9 +1020,35 @@ class TransposeHelper {
 
 
 
+=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/widgets/attachment_buttondart ===
+import 'package:flutter/material.dart';
+
+class AttachmentButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final String? fileName;
+
+  const AttachmentButton({super.key, this.onPressed, this.fileName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: fileName ?? 'Nema pratećeg fajla',
+      child: IconButton(
+        icon: const Icon(Icons.attach_file),
+        onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+
+
 === C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/widgets/song_controls_widgetdart ===
-import "../screens/song_settings_screen.dart";
 import "package:flutter/material.dart";
+import "../screens/song_settings_screen.dart";
+import "../controllers/song_settings_controller.dart";
+import "../screens/song_edit_screen.dart";
+import "attachment_button.dart";
 
 class SongControlsWidget extends StatelessWidget {
   final VoidCallback? onTransposeUp;
@@ -1013,7 +1056,9 @@ class SongControlsWidget extends StatelessWidget {
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
   final String? songName;
+  final String? filePath;
   final void Function()? onSettingsChanged;
+  final void Function()? onSongEdited;
 
   const SongControlsWidget({
     super.key,
@@ -1022,7 +1067,9 @@ class SongControlsWidget extends StatelessWidget {
     this.onZoomIn,
     this.onZoomOut,
     this.songName,
+    this.filePath,
     this.onSettingsChanged,
+    this.onSongEdited,
   });
 
   @override
@@ -1040,26 +1087,57 @@ class SongControlsWidget extends StatelessWidget {
             ElevatedButton(onPressed: () {}, child: const Text("OUT")),
             IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
             IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
-            IconButton(icon: const Icon(Icons.edit), onPressed: () {}),
+
+            AttachmentButton(
+              fileName: songName != null ? "$songName.pdf" : null,
+              onPressed: () {
+                // otvaranje kasnije
+              },
+            ),
+
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () async {
+                if (filePath == null) return;
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SongEditScreen(filePath: filePath!),
+                  ),
+                );
+                if (result == true && onSongEdited != null) {
+                  onSongEdited!();
+                }
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () async {
                 if (songName == null) return;
 
+                final currentTextSize = SongSettingsController.getTextFontSize(songName!);
+                final currentChordSize = SongSettingsController.getChordFontSize(songName!);
+                final currentTextColor = SongSettingsController.getTextColor(songName!);
+                final currentChordColor = SongSettingsController.getChordColor(songName!);
+
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => SongSettingsScreen(
-                      textFontSize: 18,
-                      chordFontSize: 20,
-                      textColor: Colors.black,
-                      chordColor: Colors.blue,
+                      textFontSize: currentTextSize,
+                      chordFontSize: currentChordSize,
+                      textColor: currentTextColor,
+                      chordColor: currentChordColor,
                     ),
                   ),
                 );
 
-                if (result != null && onSettingsChanged != null) {
-                  onSettingsChanged!();
+                if (result != null && result is Map) {
+                  SongSettingsController.setTextFontSize(songName!, result['textFontSize']);
+                  SongSettingsController.setChordFontSize(songName!, result['chordFontSize']);
+                  SongSettingsController.setTextColor(songName!, result['textColor']);
+                  SongSettingsController.setChordColor(songName!, result['chordColor']);
+                  if (onSettingsChanged != null) onSettingsChanged!();
                 }
               },
             ),

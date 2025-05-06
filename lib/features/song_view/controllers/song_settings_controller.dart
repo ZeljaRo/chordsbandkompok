@@ -61,6 +61,18 @@ class SongSettingsController {
     saveSettings();
   }
 
+  // NOVO: attachment getter
+  static String? getAttachment(String songName) {
+    return _settings[songName]?['attachment'];
+  }
+
+  // NOVO: attachment setter
+  static void setAttachment(String songName, String fileName) {
+    _settings[songName] ??= {};
+    _settings[songName]['attachment'] = fileName;
+    saveSettings();
+  }
+
   static String _colorToHex(Color color) {
     return '#${color.value.toRadixString(16).padLeft(8, '0')}';
   }

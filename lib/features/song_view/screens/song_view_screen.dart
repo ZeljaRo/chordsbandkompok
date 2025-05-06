@@ -5,6 +5,7 @@ import "../../profile_setup/controllers/current_profile_loader.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
+import '../widgets/attachment_button.dart';
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});

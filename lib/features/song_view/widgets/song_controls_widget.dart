@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "../screens/song_settings_screen.dart";
 import "../controllers/song_settings_controller.dart";
 import "../screens/song_edit_screen.dart";
+import "attachment_button.dart";
 
 class SongControlsWidget extends StatelessWidget {
   final VoidCallback? onTransposeUp;
@@ -40,6 +41,11 @@ class SongControlsWidget extends StatelessWidget {
             ElevatedButton(onPressed: () {}, child: const Text("OUT")),
             IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
             IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
+
+            AttachmentButton(
+              songName: songName,
+            ),
+
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () async {
