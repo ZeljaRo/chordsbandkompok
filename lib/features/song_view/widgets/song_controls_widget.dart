@@ -41,11 +41,7 @@ class SongControlsWidget extends StatelessWidget {
             ElevatedButton(onPressed: () {}, child: const Text("OUT")),
             IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
             IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
-
-            AttachmentButton(
-              songName: songName,
-            ),
-
+            AttachmentButton(songName: songName),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () async {
@@ -70,6 +66,8 @@ class SongControlsWidget extends StatelessWidget {
                 final currentChordSize = SongSettingsController.getChordFontSize(songName!);
                 final currentTextColor = SongSettingsController.getTextColor(songName!);
                 final currentChordColor = SongSettingsController.getChordColor(songName!);
+                final currentScrollUp = SongSettingsController.getScrollUpLines(songName!);
+                final currentScrollDown = SongSettingsController.getScrollDownLines(songName!);
 
                 final result = await Navigator.push(
                   context,
@@ -79,6 +77,8 @@ class SongControlsWidget extends StatelessWidget {
                       chordFontSize: currentChordSize,
                       textColor: currentTextColor,
                       chordColor: currentChordColor,
+                      scrollUp: currentScrollUp,
+                      scrollDown: currentScrollDown,
                     ),
                   ),
                 );
@@ -88,6 +88,12 @@ class SongControlsWidget extends StatelessWidget {
                   SongSettingsController.setChordFontSize(songName!, result['chordFontSize']);
                   SongSettingsController.setTextColor(songName!, result['textColor']);
                   SongSettingsController.setChordColor(songName!, result['chordColor']);
+                  if (result.containsKey('scrollUp')) {
+                    SongSettingsController.setScrollUpLines(songName!, result['scrollUp']);
+                  }
+                  if (result.containsKey('scrollDown')) {
+                    SongSettingsController.setScrollDownLines(songName!, result['scrollDown']);
+                  }
                   if (onSettingsChanged != null) onSettingsChanged!();
                 }
               },

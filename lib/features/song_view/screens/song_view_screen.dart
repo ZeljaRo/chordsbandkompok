@@ -6,6 +6,7 @@ import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
 import '../widgets/attachment_button.dart';
+import '../widgets/scroll_control_widget.dart';
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -26,6 +27,11 @@ class _SongViewScreenState extends State<SongViewScreen> {
   double _chordFontSize = 20;
   Color _textColor = Colors.black;
   Color _chordColor = Colors.blue;
+
+  int _scrollUpLines = 3;
+  int _scrollDownLines = 5;
+
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -81,6 +87,8 @@ class _SongViewScreenState extends State<SongViewScreen> {
       _chordFontSize = SongSettingsController.getChordFontSize(_songName!);
       _textColor = SongSettingsController.getTextColor(_songName!);
       _chordColor = SongSettingsController.getChordColor(_songName!);
+      _scrollUpLines = SongSettingsController.getScrollUpLines(_songName!);
+      _scrollDownLines = SongSettingsController.getScrollDownLines(_songName!);
     });
   }
 
@@ -104,7 +112,9 @@ class _SongViewScreenState extends State<SongViewScreen> {
     });
   }
 
-  void _onSettingsChanged() => _loadSettingsForSong();
+  void _onSettingsChanged() {
+    _loadSettingsForSong();
+  }
 
   void _refreshCurrentSong() {
     _loadSongAt(_currentIndex);
@@ -124,6 +134,24 @@ class _SongViewScreenState extends State<SongViewScreen> {
     }
   }
 
+  void _scrollUp() {
+    final offset = (_scrollUpLines * 20).toDouble();
+    _scrollController.animateTo(
+      _scrollController.offset - offset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _scrollDown() {
+    final offset = (_scrollDownLines * 20).toDouble();
+    _scrollController.animateTo(
+      _scrollController.offset + offset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fullText = _songLines.join('\n');
@@ -141,37 +169,48 @@ class _SongViewScreenState extends State<SongViewScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            SongControlsWidget(
-              onTransposeUp: _transposeUp,
-              onTransposeDown: _transposeDown,
-              onZoomIn: _zoomIn,
-              onZoomOut: _zoomOut,
-              songName: _songName,
-              filePath: _currentFile?.path,
-              onSettingsChanged: _onSettingsChanged,
-              onSongEdited: _refreshCurrentSong,
+            Column(
+              children: [
+                SongControlsWidget(
+                  onTransposeUp: _transposeUp,
+                  onTransposeDown: _transposeDown,
+                  onZoomIn: _zoomIn,
+                  onZoomOut: _zoomOut,
+                  songName: _songName,
+                  filePath: _currentFile?.path,
+                  onSettingsChanged: _onSettingsChanged,
+                  onSongEdited: _refreshCurrentSong,
+                ),
+                const Divider(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousSong),
+                      Text(_songName ?? 'Pjesma', style: const TextStyle(fontSize: 18)),
+                      IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _nextSong),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _songLines.isEmpty
+                      ? const Center(child: Text('Nema dostupnih pjesama.'))
+                      : Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            child: RichText(text: TextSpan(children: spans)),
+                          ),
+                        ),
+                ),
+              ],
             ),
-            const Divider(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousSong),
-                  Text(_songName ?? 'Pjesma', style: const TextStyle(fontSize: 18)),
-                  IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _nextSong),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _songLines.isEmpty
-                  ? const Center(child: Text('Nema dostupnih pjesama.'))
-                  : Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: RichText(text: TextSpan(children: spans)),
-                    ),
+            ScrollControlWidget(
+              onScrollUp: _scrollUp,
+              onScrollDown: _scrollDown,
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../utils/settings_sanitizer.dart';
 
 class SongSettingsController {
   static const String _filePath = 'settings.json';
@@ -20,11 +21,11 @@ class SongSettingsController {
   }
 
   static double getTextFontSize(String songName) {
-    return _settings[songName]?['textFontSize'] ?? 18.0;
+    return SettingsSanitizer.sanitizeFontSize(_settings[songName]?['textFontSize']);
   }
 
   static double getChordFontSize(String songName) {
-    return _settings[songName]?['chordFontSize'] ?? 20.0;
+    return SettingsSanitizer.sanitizeFontSize(_settings[songName]?['chordFontSize']);
   }
 
   static void setTextFontSize(String songName, double size) {
@@ -61,15 +62,33 @@ class SongSettingsController {
     saveSettings();
   }
 
-  // NOVO: attachment getter
   static String? getAttachment(String songName) {
     return _settings[songName]?['attachment'];
   }
 
-  // NOVO: attachment setter
   static void setAttachment(String songName, String fileName) {
     _settings[songName] ??= {};
     _settings[songName]['attachment'] = fileName;
+    saveSettings();
+  }
+
+  static int getScrollUpLines(String songName) {
+    return SettingsSanitizer.sanitizeScrollLines(_settings[songName]?['scrollUp']);
+  }
+
+  static int getScrollDownLines(String songName) {
+    return SettingsSanitizer.sanitizeScrollLines(_settings[songName]?['scrollDown']);
+  }
+
+  static void setScrollUpLines(String songName, int value) {
+    _settings[songName] ??= {};
+    _settings[songName]['scrollUp'] = value;
+    saveSettings();
+  }
+
+  static void setScrollDownLines(String songName, int value) {
+    _settings[songName] ??= {};
+    _settings[songName]['scrollDown'] = value;
     saveSettings();
   }
 

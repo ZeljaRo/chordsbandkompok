@@ -5,6 +5,8 @@ class SongSettingsScreen extends StatefulWidget {
   final double chordFontSize;
   final Color textColor;
   final Color chordColor;
+  final int scrollUp;
+  final int scrollDown;
 
   const SongSettingsScreen({
     super.key,
@@ -12,6 +14,8 @@ class SongSettingsScreen extends StatefulWidget {
     required this.chordFontSize,
     required this.textColor,
     required this.chordColor,
+    required this.scrollUp,
+    required this.scrollDown,
   });
 
   @override
@@ -23,6 +27,8 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
   late double _chordFontSize;
   late Color _textColor;
   late Color _chordColor;
+  late int _scrollUp;
+  late int _scrollDown;
 
   final List<Color> _colors = [
     Colors.black,
@@ -42,6 +48,8 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
     _chordFontSize = widget.chordFontSize;
     _textColor = widget.textColor;
     _chordColor = widget.chordColor;
+    _scrollUp = widget.scrollUp;
+    _scrollDown = widget.scrollDown;
   }
 
   Widget _buildColorPicker(String label, Color selectedColor, ValueChanged<Color> onColorSelected) {
@@ -99,6 +107,26 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
             _buildColorPicker('Boja teksta', _textColor, (color) => _textColor = color),
             const SizedBox(height: 16),
             _buildColorPicker('Boja akorda', _chordColor, (color) => _chordColor = color),
+            const SizedBox(height: 24),
+            const Text('Redova po scroll UP'),
+            Slider(
+              value: _scrollUp.toDouble(),
+              min: 1,
+              max: 15,
+              divisions: 14,
+              label: _scrollUp.toString(),
+              onChanged: (value) => setState(() => _scrollUp = value.toInt()),
+            ),
+            const SizedBox(height: 16),
+            const Text('Redova po scroll DOWN'),
+            Slider(
+              value: _scrollDown.toDouble(),
+              min: 1,
+              max: 15,
+              divisions: 14,
+              label: _scrollDown.toString(),
+              onChanged: (value) => setState(() => _scrollDown = value.toInt()),
+            ),
             const Spacer(),
             Center(
               child: ElevatedButton(
@@ -108,6 +136,8 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
                     'chordFontSize': _chordFontSize,
                     'textColor': _textColor,
                     'chordColor': _chordColor,
+                    'scrollUp': _scrollUp,
+                    'scrollDown': _scrollDown,
                   });
                 },
                 child: const Text('Spremi'),
