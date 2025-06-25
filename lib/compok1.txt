@@ -1,5 +1,6 @@
-﻿=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/maindart ===
+﻿=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/maindart ===
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'app/router.dart';
 
 void main() {
@@ -28,14 +29,18 @@ class MyApp extends StatelessWidget {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/app/routerdart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/app/routerdart ===
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../features/language/screens/language_select_screen.dart';
 import '../features/profile_setup/screens/profile_setup_screen.dart';
 import '../features/song_view/screens/song_view_screen.dart';
+import '../features/song_view/screens/song_settings_screen.dart';
+import '../features/song_view/screens/song_edit_screen.dart';
+import '../features/song_view/screens/song_search_screen.dart';
 
 final GoRouter appRouter = GoRouter(
+  initialLocation: '/language',
   routes: [
     GoRoute(
       path: '/language',
@@ -50,15 +55,30 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const SongViewScreen(),
     ),
     GoRoute(
-      path: '/',
-      redirect: (context, state) => '/language',
+      path: '/song-settings',
+      builder: (context, state) => const SongSettingsScreen(
+        textFontSize: 18,
+        chordFontSize: 20,
+        textColor: Colors.black,
+        chordColor: Colors.blue,
+        scrollUp: 3,
+        scrollDown: 5,
+      ),
+    ),
+    GoRoute(
+      path: '/song-edit',
+      builder: (context, state) => const SongEditScreen(filePath: ''),
+    ),
+    GoRoute(
+      path: '/song-search',
+      builder: (context, state) => const SongSearchScreen(),
     ),
   ],
 );
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/language/screens/language_select_screendart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/language/screens/language_select_screendart ===
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -114,7 +134,7 @@ class LanguageSelectScreen extends StatelessWidget {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/profile_setup/controllers/current_profile_loaderdart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/profile_setup/controllers/current_profile_loaderdart ===
 import 'dart:convert';
 import 'dart:io';
 
@@ -134,7 +154,7 @@ class CurrentProfileLoader {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/profile_setup/controllers/profile_controllerdart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/profile_setup/controllers/profile_controllerdart ===
 import 'dart:convert';
 import 'dart:io';
 
@@ -179,7 +199,7 @@ class ProfileController {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/profile_setup/screens/profile_setup_screendart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/profile_setup/screens/profile_setup_screendart ===
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
@@ -351,7 +371,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/controllers/song_editor_controllerdart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/controllers/song_editor_controllerdart ===
 import 'dart:io';
 
 class SongEditorController {
@@ -363,10 +383,11 @@ class SongEditorController {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/controllers/song_settings_controllerdart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/controllers/song_settings_controllerdart ===
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../utils/settings_sanitizer.dart';
 
 class SongSettingsController {
   static const String _filePath = 'settings.json';
@@ -386,11 +407,11 @@ class SongSettingsController {
   }
 
   static double getTextFontSize(String songName) {
-    return _settings[songName]?['textFontSize'] ?? 18.0;
+    return SettingsSanitizer.sanitizeFontSize(_settings[songName]?['textFontSize']);
   }
 
   static double getChordFontSize(String songName) {
-    return _settings[songName]?['chordFontSize'] ?? 20.0;
+    return SettingsSanitizer.sanitizeFontSize(_settings[songName]?['chordFontSize']);
   }
 
   static void setTextFontSize(String songName, double size) {
@@ -427,6 +448,36 @@ class SongSettingsController {
     saveSettings();
   }
 
+  static String? getAttachment(String songName) {
+    return _settings[songName]?['attachment'];
+  }
+
+  static void setAttachment(String songName, String fileName) {
+    _settings[songName] ??= {};
+    _settings[songName]['attachment'] = fileName;
+    saveSettings();
+  }
+
+  static int getScrollUpLines(String songName) {
+    return SettingsSanitizer.sanitizeScrollLines(_settings[songName]?['scrollUp']);
+  }
+
+  static int getScrollDownLines(String songName) {
+    return SettingsSanitizer.sanitizeScrollLines(_settings[songName]?['scrollDown']);
+  }
+
+  static void setScrollUpLines(String songName, int value) {
+    _settings[songName] ??= {};
+    _settings[songName]['scrollUp'] = value;
+    saveSettings();
+  }
+
+  static void setScrollDownLines(String songName, int value) {
+    _settings[songName] ??= {};
+    _settings[songName]['scrollDown'] = value;
+    saveSettings();
+  }
+
   static String _colorToHex(Color color) {
     return '#${color.value.toRadixString(16).padLeft(8, '0')}';
   }
@@ -440,7 +491,7 @@ class SongSettingsController {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/screens/song_color_settings_screendart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/screens/song_color_settings_screendart ===
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
@@ -548,7 +599,7 @@ class _SongColorSettingsScreenState extends State<SongColorSettingsScreen> {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/screens/song_edit_screendart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/screens/song_edit_screendart ===
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../controllers/song_editor_controller.dart';
@@ -607,7 +658,132 @@ class _SongEditScreenState extends State<SongEditScreen> {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/screens/song_settings_screendart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/screens/song_search_screendart ===
+import "dart:io";
+import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
+import "../../profile_setup/controllers/current_profile_loader.dart";
+import "../utils/setlist_manager.dart";
+import "../widgets/setlist_controls_widget.dart";
+
+class SongSearchScreen extends StatefulWidget {
+  const SongSearchScreen({super.key});
+
+  @override
+  State<SongSearchScreen> createState() => _SongSearchScreenState();
+}
+
+class _SongSearchScreenState extends State<SongSearchScreen> {
+  List<String> allSongs = [];
+  List<String> filteredSongs = [];
+  String searchQuery = "";
+  String? activeSetlistName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSongs();
+  }
+
+  Future<void> _loadSongs() async {
+    final profile = await CurrentProfileLoader.loadLastProfile();
+    final folderPath = profile?['text_folder'];
+
+    if (folderPath == null) return;
+
+    final folder = Directory(folderPath);
+    if (!folder.existsSync()) return;
+
+    final txtFiles = folder
+        .listSync()
+        .whereType<File>()
+        .where((file) => file.path.toLowerCase().endsWith(".txt"))
+        .map((file) => file.uri.pathSegments.last)
+        .toList();
+
+    setState(() {
+      allSongs = txtFiles;
+      filteredSongs = txtFiles;
+    });
+  }
+
+  void _filterSongs(String query) {
+    setState(() {
+      searchQuery = query;
+      filteredSongs = allSongs
+          .where((song) => song.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
+  }
+
+  void _setActiveSetlist(String name) {
+    setState(() {
+      activeSetlistName = name;
+    });
+  }
+
+  void _addToSetlist(String song) {
+    if (activeSetlistName == null) return;
+    SetlistManager.addSong(song, activeSetlistName!);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Pretraga pjesama")),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              onChanged: _filterSongs,
+              decoration: const InputDecoration(
+                labelText: "Pretraži...",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: SetlistControlsWidget(
+              onSetlistCreated: _setActiveSetlist,
+            ),
+          ),
+          if (activeSetlistName != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text("Aktivna lista: $activeSetlistName"),
+            ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredSongs.length,
+              itemBuilder: (context, index) {
+                final song = filteredSongs[index];
+                return ListTile(
+                  title: Text(song),
+                  onTap: () {
+                    context.go("/song-view?file=$song");
+                  },
+                  trailing: IconButton(
+                    icon: const Icon(Icons.playlist_add),
+                    onPressed: () {
+                      _addToSetlist(song);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/screens/song_settings_screendart ===
 import 'package:flutter/material.dart';
 
 class SongSettingsScreen extends StatefulWidget {
@@ -615,6 +791,8 @@ class SongSettingsScreen extends StatefulWidget {
   final double chordFontSize;
   final Color textColor;
   final Color chordColor;
+  final int scrollUp;
+  final int scrollDown;
 
   const SongSettingsScreen({
     super.key,
@@ -622,6 +800,8 @@ class SongSettingsScreen extends StatefulWidget {
     required this.chordFontSize,
     required this.textColor,
     required this.chordColor,
+    required this.scrollUp,
+    required this.scrollDown,
   });
 
   @override
@@ -633,6 +813,8 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
   late double _chordFontSize;
   late Color _textColor;
   late Color _chordColor;
+  late int _scrollUp;
+  late int _scrollDown;
 
   final List<Color> _colors = [
     Colors.black,
@@ -652,6 +834,8 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
     _chordFontSize = widget.chordFontSize;
     _textColor = widget.textColor;
     _chordColor = widget.chordColor;
+    _scrollUp = widget.scrollUp;
+    _scrollDown = widget.scrollDown;
   }
 
   Widget _buildColorPicker(String label, Color selectedColor, ValueChanged<Color> onColorSelected) {
@@ -709,6 +893,26 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
             _buildColorPicker('Boja teksta', _textColor, (color) => _textColor = color),
             const SizedBox(height: 16),
             _buildColorPicker('Boja akorda', _chordColor, (color) => _chordColor = color),
+            const SizedBox(height: 24),
+            const Text('Redova po scroll UP'),
+            Slider(
+              value: _scrollUp.toDouble(),
+              min: 1,
+              max: 15,
+              divisions: 14,
+              label: _scrollUp.toString(),
+              onChanged: (value) => setState(() => _scrollUp = value.toInt()),
+            ),
+            const SizedBox(height: 16),
+            const Text('Redova po scroll DOWN'),
+            Slider(
+              value: _scrollDown.toDouble(),
+              min: 1,
+              max: 15,
+              divisions: 14,
+              label: _scrollDown.toString(),
+              onChanged: (value) => setState(() => _scrollDown = value.toInt()),
+            ),
             const Spacer(),
             Center(
               child: ElevatedButton(
@@ -718,6 +922,8 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
                     'chordFontSize': _chordFontSize,
                     'textColor': _textColor,
                     'chordColor': _chordColor,
+                    'scrollUp': _scrollUp,
+                    'scrollDown': _scrollDown,
                   });
                 },
                 child: const Text('Spremi'),
@@ -732,7 +938,7 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/screens/song_view_screendart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/screens/song_view_screendart ===
 import "package:flutter/material.dart";
 import "dart:io";
 import "../widgets/song_controls_widget.dart";
@@ -741,6 +947,7 @@ import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
 import '../widgets/attachment_button.dart';
+import '../widgets/scroll_control_widget.dart';
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -761,6 +968,11 @@ class _SongViewScreenState extends State<SongViewScreen> {
   double _chordFontSize = 20;
   Color _textColor = Colors.black;
   Color _chordColor = Colors.blue;
+
+  int _scrollUpLines = 3;
+  int _scrollDownLines = 5;
+
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -816,6 +1028,8 @@ class _SongViewScreenState extends State<SongViewScreen> {
       _chordFontSize = SongSettingsController.getChordFontSize(_songName!);
       _textColor = SongSettingsController.getTextColor(_songName!);
       _chordColor = SongSettingsController.getChordColor(_songName!);
+      _scrollUpLines = SongSettingsController.getScrollUpLines(_songName!);
+      _scrollDownLines = SongSettingsController.getScrollDownLines(_songName!);
     });
   }
 
@@ -839,7 +1053,9 @@ class _SongViewScreenState extends State<SongViewScreen> {
     });
   }
 
-  void _onSettingsChanged() => _loadSettingsForSong();
+  void _onSettingsChanged() {
+    _loadSettingsForSong();
+  }
 
   void _refreshCurrentSong() {
     _loadSongAt(_currentIndex);
@@ -859,6 +1075,24 @@ class _SongViewScreenState extends State<SongViewScreen> {
     }
   }
 
+  void _scrollUp() {
+    final offset = (_scrollUpLines * 20).toDouble();
+    _scrollController.animateTo(
+      _scrollController.offset - offset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _scrollDown() {
+    final offset = (_scrollDownLines * 20).toDouble();
+    _scrollController.animateTo(
+      _scrollController.offset + offset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fullText = _songLines.join('\n');
@@ -876,48 +1110,48 @@ class _SongViewScreenState extends State<SongViewScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Column(
               children: [
-                AttachmentButton(
-                  fileName: "note123.pdf",
-                  onPressed: () {
-                    // otvaranje kasnije
-                  },
+                SongControlsWidget(
+                  onTransposeUp: _transposeUp,
+                  onTransposeDown: _transposeDown,
+                  onZoomIn: _zoomIn,
+                  onZoomOut: _zoomOut,
+                  songName: _songName,
+                  filePath: _currentFile?.path,
+                  onSettingsChanged: _onSettingsChanged,
+                  onSongEdited: _refreshCurrentSong,
+                ),
+                const Divider(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousSong),
+                      Text(_songName ?? 'Pjesma', style: const TextStyle(fontSize: 18)),
+                      IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _nextSong),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _songLines.isEmpty
+                      ? const Center(child: Text('Nema dostupnih pjesama.'))
+                      : Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            child: RichText(text: TextSpan(children: spans)),
+                          ),
+                        ),
                 ),
               ],
             ),
-            SongControlsWidget(
-              onTransposeUp: _transposeUp,
-              onTransposeDown: _transposeDown,
-              onZoomIn: _zoomIn,
-              onZoomOut: _zoomOut,
-              songName: _songName,
-              filePath: _currentFile?.path,
-              onSettingsChanged: _onSettingsChanged,
-              onSongEdited: _refreshCurrentSong,
-            ),
-            const Divider(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousSong),
-                  Text(_songName ?? 'Pjesma', style: const TextStyle(fontSize: 18)),
-                  IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _nextSong),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _songLines.isEmpty
-                  ? const Center(child: Text('Nema dostupnih pjesama.'))
-                  : Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: RichText(text: TextSpan(children: spans)),
-                    ),
+            ScrollControlWidget(
+              onScrollUp: _scrollUp,
+              onScrollDown: _scrollDown,
             ),
           ],
         ),
@@ -928,7 +1162,7 @@ class _SongViewScreenState extends State<SongViewScreen> {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/utils/rich_song_parserdart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/utils/rich_song_parserdart ===
 import "package:flutter/material.dart";
 
 class RichSongParser {
@@ -988,7 +1222,57 @@ class RichSongParser {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/utils/transpose_helperdart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/utils/setlist_managerdart ===
+import "dart:convert";
+import "dart:io";
+import "../../profile_setup/controllers/current_profile_loader.dart";
+
+class SetlistManager {
+  static Future<void> addSong(String songName, String setlistName) async {
+    final profile = await CurrentProfileLoader.loadLastProfile();
+    final folderPath = profile?['text_folder'];
+    if (folderPath == null) return;
+
+    final folder = Directory("$folderPath\\setlists");
+    if (!folder.existsSync()) folder.createSync(recursive: true);
+
+    final file = File("${folder.path}\\$setlistName.json");
+
+    List<String> songs = [];
+    if (file.existsSync()) {
+      final content = file.readAsStringSync();
+      songs = List<String>.from(jsonDecode(content));
+    }
+
+    if (!songs.contains(songName)) {
+      songs.add(songName);
+      file.writeAsStringSync(jsonEncode(songs));
+    }
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/utils/settings_sanitizerdart ===
+class SettingsSanitizer {
+  static double sanitizeFontSize(dynamic value) {
+    if (value is num && value >= 10 && value <= 50) {
+      return value.toDouble();
+    }
+    return 18.0;
+  }
+
+  static int sanitizeScrollLines(dynamic value) {
+    if (value is int && value >= 1 && value <= 30) {
+      return value;
+    }
+    return 3;
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/utils/transpose_helperdart ===
 class TransposeHelper {
   static final List<String> _notes = [
     'C', 'C#', 'D', 'D#', 'E', 'F',
@@ -1020,22 +1304,110 @@ class TransposeHelper {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/widgets/attachment_buttondart ===
-import 'package:flutter/material.dart';
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/widgets/attachment_buttondart ===
+import "dart:io";
+import "package:flutter/material.dart";
+import "package:open_file/open_file.dart";
+import "../../profile_setup/controllers/current_profile_loader.dart";
+import "../controllers/song_settings_controller.dart";
 
-class AttachmentButton extends StatelessWidget {
-  final VoidCallback? onPressed;
-  final String? fileName;
+class AttachmentButton extends StatefulWidget {
+  final String? songName;
 
-  const AttachmentButton({super.key, this.onPressed, this.fileName});
+  const AttachmentButton({super.key, this.songName});
+
+  @override
+  State<AttachmentButton> createState() => _AttachmentButtonState();
+}
+
+class _AttachmentButtonState extends State<AttachmentButton> {
+  String? currentFile;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.songName != null) {
+      currentFile = SongSettingsController.getAttachment(widget.songName!);
+    }
+  }
+
+  void _refreshFile() {
+    if (widget.songName != null) {
+      setState(() {
+        currentFile = SongSettingsController.getAttachment(widget.songName!);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: fileName ?? 'Nema pratećeg fajla',
+      message: currentFile ?? "Nema pratećeg fajla",
       child: IconButton(
         icon: const Icon(Icons.attach_file),
-        onPressed: onPressed,
+        onPressed: () async {
+          if (widget.songName == null) return;
+
+          final profile = await CurrentProfileLoader.loadLastProfile();
+          if (profile == null || profile['media_folder'] == null) return;
+          final dir = Directory(profile['media_folder']);
+          if (!dir.existsSync()) return;
+
+          if (currentFile != null) {
+            final choice = await showDialog<String>(
+              context: context,
+              builder: (ctx) => SimpleDialog(
+                title: const Text("Prateći fajl"),
+                children: [
+                  SimpleDialogOption(
+                    child: const Text("Otvori fajl"),
+                    onPressed: () => Navigator.pop(ctx, "open"),
+                  ),
+                  SimpleDialogOption(
+                    child: const Text("Promijeni fajl"),
+                    onPressed: () => Navigator.pop(ctx, "change"),
+                  ),
+                ],
+              ),
+            );
+
+            if (choice == "open") {
+              final fullPath = "${dir.path}${Platform.pathSeparator}$currentFile";
+              if (await File(fullPath).exists()) {
+                OpenFile.open(fullPath);
+              }
+              return;
+            }
+
+            if (choice != "change") return;
+          }
+
+          final files = dir
+              .listSync()
+              .whereType<File>()
+              .map((f) => f.path.split(Platform.pathSeparator).last)
+              .toList();
+
+          if (files.isEmpty) return;
+
+          final selected = await showDialog<String>(
+            context: context,
+            builder: (ctx) => SimpleDialog(
+              title: const Text("Odaberi prateći fajl"),
+              children: files.map((file) {
+                return SimpleDialogOption(
+                  child: Text(file),
+                  onPressed: () => Navigator.pop(ctx, file),
+                );
+              }).toList(),
+            ),
+          );
+
+          if (selected != null) {
+            SongSettingsController.setAttachment(widget.songName!, selected);
+            _refreshFile();
+          }
+        },
       ),
     );
   }
@@ -1043,8 +1415,158 @@ class AttachmentButton extends StatelessWidget {
 
 
 
-=== C:/Users/Korisnik/Documents/projekti/chordsband/lib/features/song_view/widgets/song_controls_widgetdart ===
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/widgets/scroll_buttonsdart ===
+import 'package:flutter/material.dart';
+
+class ScrollButtons extends StatelessWidget {
+  final VoidCallback onScrollUp;
+  final VoidCallback onScrollDown;
+
+  const ScrollButtons({
+    super.key,
+    required this.onScrollUp,
+    required this.onScrollDown,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.keyboard_arrow_up),
+          iconSize: 36,
+          onPressed: onScrollUp,
+        ),
+        const SizedBox(height: 8),
+        IconButton(
+          icon: const Icon(Icons.keyboard_arrow_down),
+          iconSize: 36,
+          onPressed: onScrollDown,
+        ),
+      ],
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/widgets/scroll_control_widgetdart ===
+import 'package:flutter/material.dart';
+
+class ScrollControlWidget extends StatelessWidget {
+  final VoidCallback onScrollUp;
+  final VoidCallback onScrollDown;
+
+  const ScrollControlWidget({
+    super.key,
+    required this.onScrollUp,
+    required this.onScrollDown,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 4,
+      bottom: 40,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_upward),
+            iconSize: 32,
+            onPressed: onScrollUp,
+          ),
+          const SizedBox(height: 8),
+          IconButton(
+            icon: const Icon(Icons.arrow_downward),
+            iconSize: 32,
+            onPressed: onScrollDown,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/widgets/setlist_controls_widgetdart ===
+import "dart:convert";
+import "dart:io";
 import "package:flutter/material.dart";
+import "../../profile_setup/controllers/current_profile_loader.dart";
+
+class SetlistControlsWidget extends StatefulWidget {
+  final void Function(String)? onSetlistCreated;
+
+  const SetlistControlsWidget({super.key, this.onSetlistCreated});
+
+  @override
+  State<SetlistControlsWidget> createState() => _SetlistControlsWidgetState();
+}
+
+class _SetlistControlsWidgetState extends State<SetlistControlsWidget> {
+  final TextEditingController _controller = TextEditingController();
+  String? activeSetlistName;
+
+  void _createSetlist() async {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+
+    final profile = await CurrentProfileLoader.loadLastProfile();
+    final folder = Directory("${profile?['text_folder']}\\setlists");
+    if (!folder.existsSync()) folder.createSync(recursive: true);
+
+    final file = File("${folder.path}\\$name.json");
+    if (!file.existsSync()) {
+      file.writeAsStringSync(jsonEncode([]));
+    }
+
+    setState(() {
+      activeSetlistName = name;
+    });
+
+    if (widget.onSetlistCreated != null) {
+      widget.onSetlistCreated!(name);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: "Unesi ime nove set liste",
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: _createSetlist,
+              child: const Text("Kreiraj"),
+            ),
+          ],
+        ),
+        if (activeSetlistName != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text("Aktivna set lista: $activeSetlistName"),
+          ),
+      ],
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/widgets/song_controls_widgetdart ===
+import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "../screens/song_settings_screen.dart";
 import "../controllers/song_settings_controller.dart";
 import "../screens/song_edit_screen.dart";
@@ -1080,21 +1602,19 @@ class SongControlsWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
         child: Row(
           children: [
-            IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                context.go('/song-search');
+              },
+            ),
             IconButton(icon: const Icon(Icons.remove), onPressed: onTransposeDown),
             IconButton(icon: const Icon(Icons.add), onPressed: onTransposeUp),
             IconButton(icon: const Icon(Icons.lock), onPressed: () {}),
             ElevatedButton(onPressed: () {}, child: const Text("OUT")),
             IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
             IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
-
-            AttachmentButton(
-              fileName: songName != null ? "$songName.pdf" : null,
-              onPressed: () {
-                // otvaranje kasnije
-              },
-            ),
-
+            AttachmentButton(songName: songName),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () async {
@@ -1119,6 +1639,8 @@ class SongControlsWidget extends StatelessWidget {
                 final currentChordSize = SongSettingsController.getChordFontSize(songName!);
                 final currentTextColor = SongSettingsController.getTextColor(songName!);
                 final currentChordColor = SongSettingsController.getChordColor(songName!);
+                final currentScrollUp = SongSettingsController.getScrollUpLines(songName!);
+                final currentScrollDown = SongSettingsController.getScrollDownLines(songName!);
 
                 final result = await Navigator.push(
                   context,
@@ -1128,6 +1650,8 @@ class SongControlsWidget extends StatelessWidget {
                       chordFontSize: currentChordSize,
                       textColor: currentTextColor,
                       chordColor: currentChordColor,
+                      scrollUp: currentScrollUp,
+                      scrollDown: currentScrollDown,
                     ),
                   ),
                 );
@@ -1137,6 +1661,12 @@ class SongControlsWidget extends StatelessWidget {
                   SongSettingsController.setChordFontSize(songName!, result['chordFontSize']);
                   SongSettingsController.setTextColor(songName!, result['textColor']);
                   SongSettingsController.setChordColor(songName!, result['chordColor']);
+                  if (result.containsKey('scrollUp')) {
+                    SongSettingsController.setScrollUpLines(songName!, result['scrollUp']);
+                  }
+                  if (result.containsKey('scrollDown')) {
+                    SongSettingsController.setScrollDownLines(songName!, result['scrollDown']);
+                  }
                   if (onSettingsChanged != null) onSettingsChanged!();
                 }
               },

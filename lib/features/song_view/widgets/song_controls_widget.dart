@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
 import "../screens/song_settings_screen.dart";
 import "../controllers/song_settings_controller.dart";
 import "../screens/song_edit_screen.dart";
@@ -34,7 +35,12 @@ class SongControlsWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
         child: Row(
           children: [
-            IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                context.go('/song-search');
+              },
+            ),
             IconButton(icon: const Icon(Icons.remove), onPressed: onTransposeDown),
             IconButton(icon: const Icon(Icons.add), onPressed: onTransposeUp),
             IconButton(icon: const Icon(Icons.lock), onPressed: () {}),
