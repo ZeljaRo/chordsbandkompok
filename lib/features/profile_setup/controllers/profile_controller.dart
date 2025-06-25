@@ -1,41 +1,47 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class ProfileController {
-  static const String fileName = 'profiles.json';
-
   static Future<void> saveProfile({
     required String name,
-    required String textFolder,
-    required String mediaFolder,
+    required String lyricsPath,
+    required String mediaPath,
     required String connection,
   }) async {
-    final profile = {
-      'name': name,
-      'text_folder': textFolder,
-      'media_folder': mediaFolder,
-      'connection': connection,
-    };
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/profiles.json');
 
-    final file = File(fileName);
-    List profiles = [];
+    List<Map<String, dynamic>> profiles = [];
 
-    if (file.existsSync()) {
-      final content = file.readAsStringSync();
-      profiles = jsonDecode(content);
+    if (await file.exists()) {
+      final content = await file.readAsString();
+      final decoded = jsonDecode(content);
+      profiles = List<Map<String, dynamic>>.from(decoded);
     }
 
     profiles.removeWhere((p) => p['name'] == name);
-    profiles.add(profile);
+
+    profiles.add({
+      'name': name,
+      'lyricsPath': lyricsPath,
+      'mediaPath': mediaPath,
+      'connection': connection,
+    });
 
     await file.writeAsString(jsonEncode(profiles));
   }
 
   static Future<List<Map<String, dynamic>>> loadProfiles() async {
-    final file = File(fileName);
-    if (!file.existsSync()) return [];
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/profiles.json');
+
+    if (!await file.exists()) {
+      return [];
+    }
+
     final content = await file.readAsString();
-    final data = jsonDecode(content);
-    return List<Map<String, dynamic>>.from(data);
+    final decoded = jsonDecode(content);
+    return List<Map<String, dynamic>>.from(decoded);
   }
 }

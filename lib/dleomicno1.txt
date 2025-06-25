@@ -78,6 +78,102 @@ final GoRouter appRouter = GoRouter(
 
 
 
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/common/services/profile_storage_servicedart ===
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+
+class ProfileStorageService {
+  static Future<String> _getProfilesFilePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/profiles.json');
+    return file.path;
+  }
+
+  static Future<void> saveProfile({
+    required String name,
+    required String lyricsPath,
+    required String attachmentsPath,
+  }) async {
+    final path = await _getProfilesFilePath();
+    final file = File(path);
+    List<Map<String, dynamic>> profiles = [];
+
+    if (await file.exists()) {
+      final content = await file.readAsString();
+      profiles = List<Map<String, dynamic>>.from(json.decode(content));
+    }
+
+    profiles.removeWhere((p) => p['name'] == name);
+    profiles.add({
+      'name': name,
+      'lyricsPath': lyricsPath,
+      'attachmentsPath': attachmentsPath,
+    });
+
+    await file.writeAsString(json.encode(profiles));
+  }
+
+  static Future<List<Map<String, dynamic>>> loadProfiles() async {
+    final path = await _getProfilesFilePath();
+    final file = File(path);
+    if (!await file.exists()) return [];
+    final content = await file.readAsString();
+    return List<Map<String, dynamic>>.from(json.decode(content));
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/common/utils/file_utilsdart ===
+import 'dart:io';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+class FileUtils {
+  static Future<Directory> getInternalDirectory() async {
+    return await getApplicationDocumentsDirectory();
+  }
+
+  static Future<File> getInternalFile(String fileName) async {
+    final dir = await getInternalDirectory();
+    return File(p.join(dir.path, fileName));
+  }
+
+  static Future<Directory> getSetlistDirectory() async {
+    final dir = await getInternalDirectory();
+    final setlistDir = Directory(p.join(dir.path, 'setlists'));
+    if (!setlistDir.existsSync()) {
+      setlistDir.createSync(recursive: true);
+    }
+    return setlistDir;
+  }
+
+  static Future<void> copyTxtFilesToInternal(String sourceFolderPath) async {
+    final sourceDir = Directory(sourceFolderPath);
+    if (!sourceDir.existsSync()) return;
+
+    final targetDir = await getInternalDirectory();
+
+    final txtFiles = sourceDir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.toLowerCase().endsWith('.txt'));
+
+    for (final file in txtFiles) {
+      final fileName = p.basename(file.path);
+      final newPath = p.join(targetDir.path, fileName);
+      final newFile = File(newPath);
+
+      if (!newFile.existsSync()) {
+        await file.copy(newPath);
+      }
+    }
+  }
+}
+
+
+
 === C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/language/screens/language_select_screendart ===
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -157,43 +253,50 @@ class CurrentProfileLoader {
 === C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/profile_setup/controllers/profile_controllerdart ===
 import 'dart:convert';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class ProfileController {
-  static const String fileName = 'profiles.json';
-
-  static Future<void> saveProfile({
-    required String name,
-    required String textFolder,
-    required String mediaFolder,
-    required String connection,
-  }) async {
-    final profile = {
-      'name': name,
-      'text_folder': textFolder,
-      'media_folder': mediaFolder,
-      'connection': connection,
-    };
-
-    final file = File(fileName);
-    List profiles = [];
-
-    if (file.existsSync()) {
-      final content = file.readAsStringSync();
-      profiles = jsonDecode(content);
+  static Future<String> _getProfileFilePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/profiles.json');
+    if (!(await file.exists())) {
+      await file.create(recursive: true);
+      await file.writeAsString(jsonEncode([]));
     }
-
-    profiles.removeWhere((p) => p['name'] == name);
-    profiles.add(profile);
-
-    await file.writeAsString(jsonEncode(profiles));
+    return file.path;
   }
 
   static Future<List<Map<String, dynamic>>> loadProfiles() async {
-    final file = File(fileName);
-    if (!file.existsSync()) return [];
+    final path = await _getProfileFilePath();
+    final file = File(path);
     final content = await file.readAsString();
-    final data = jsonDecode(content);
-    return List<Map<String, dynamic>>.from(data);
+    final List<dynamic> data = jsonDecode(content);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  static Future<void> saveProfile({
+    required String name,
+    required String lyricsPath,
+    required String attachmentsPath,
+    required String connection,
+  }) async {
+    final path = await _getProfileFilePath();
+    final file = File(path);
+    final List<Map<String, dynamic>> profiles =
+        (jsonDecode(await file.readAsString()) as List)
+            .cast<Map<String, dynamic>>();
+
+    final updated = [
+      ...profiles.where((p) => p['name'] != name),
+      {
+        'name': name,
+        'lyricsPath': lyricsPath,
+        'attachmentsPath': attachmentsPath,
+        'connection': connection,
+      }
+    ];
+
+    await file.writeAsString(jsonEncode(updated));
   }
 }
 
@@ -202,7 +305,7 @@ class ProfileController {
 === C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/profile_setup/screens/profile_setup_screendart ===
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import '../controllers/profile_controller.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -235,7 +338,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Future<void> _pickTextFolder() async {
-    final result = await FilePicker.platform.getDirectoryPath();
+    final result = await getDirectoryPath();
     if (result != null) {
       setState(() {
         _selectedTextFolder = result;
@@ -244,7 +347,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Future<void> _pickMediaFolder() async {
-    final result = await FilePicker.platform.getDirectoryPath();
+    final result = await getDirectoryPath();
     if (result != null) {
       setState(() {
         _selectedMediaFolder = result;
@@ -267,8 +370,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     await ProfileController.saveProfile(
       name: name,
-      textFolder: text,
-      mediaFolder: media,
+      lyricsPath: text,
+      attachmentsPath: media,
       connection: conn,
     );
 
@@ -302,7 +405,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _pickMediaFolder,
-              child: Text(_selectedMediaFolder ?? 'Odaberi prateću mapu'),
+              child: Text(_selectedMediaFolder ?? 'Odaberi prateÄ‡u mapu'),
             ),
             const SizedBox(height: 20),
             const Text('Odaberi vezu:'),
@@ -366,6 +469,94 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         ),
       ),
     );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/profile_setup/services/profile_storage_servicedart ===
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:path_provider/path_provider.dart';
+
+class ProfileStorageService {
+  static Future<String> _getProfilesFilePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/profiles.json');
+    return file.path;
+  }
+
+  static Future<void> saveProfile({
+    required String name,
+    required String lyricsPath,
+    required String attachmentsPath,
+  }) async {
+    final path = await _getProfilesFilePath();
+    final file = File(path);
+
+    Map<String, dynamic> profileData = {
+      'name': name,
+      'lyricsPath': lyricsPath,
+      'attachmentsPath': attachmentsPath,
+    };
+
+    List<Map<String, dynamic>> profiles = [];
+
+    if (await file.exists()) {
+      final content = await file.readAsString();
+      profiles = List<Map<String, dynamic>>.from(json.decode(content));
+    }
+
+    profiles.removeWhere((p) => p['name'] == name);
+    profiles.add(profileData);
+
+    await file.writeAsString(json.encode(profiles));
+  }
+
+  static Future<List<Map<String, dynamic>>> loadProfiles() async {
+    final path = await _getProfilesFilePath();
+    final file = File(path);
+
+    if (!await file.exists()) return [];
+
+    final content = await file.readAsString();
+    final profiles = List<Map<String, dynamic>>.from(json.decode(content));
+    return profiles;
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/profile_setup/utils/file_copy_servicedart ===
+import 'dart:io';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+class FileCopyService {
+  /// Kopira sve .txt fajlove iz [sourcePath] u internu memoriju aplikacije
+  /// na lokaciju: appDocDir/txt/
+  static Future<void> copyTxtFilesToInternal(String sourcePath) async {
+    final sourceDir = Directory(sourcePath);
+    if (!await sourceDir.exists()) return;
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final targetDir = Directory(p.join(appDir.path, 'txt'));
+
+    if (!await targetDir.exists()) {
+      await targetDir.create(recursive: true);
+    }
+
+    final txtFiles = sourceDir
+        .listSync()
+        .whereType<File>()
+        .where((file) => file.path.toLowerCase().endsWith('.txt'));
+
+    for (final file in txtFiles) {
+      final fileName = p.basename(file.path);
+      final targetFile = File(p.join(targetDir.path, fileName));
+      await file.copy(targetFile.path);
+    }
   }
 }
 
