@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "dart:io";
+import "package:path_provider/path_provider.dart";
 import "../widgets/song_controls_widget.dart";
-import "../../profile_setup/controllers/current_profile_loader.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
@@ -37,15 +37,12 @@ class _SongViewScreenState extends State<SongViewScreen> {
   void initState() {
     super.initState();
     SongSettingsController.loadSettings().then((_) {
-      _loadSongsFromProfile();
+      _loadSongsFromInternal();
     });
   }
 
-  Future<void> _loadSongsFromProfile() async {
-    final profile = await CurrentProfileLoader.loadLastProfile();
-    if (profile == null || profile['text_folder'] == null) return;
-
-    final dir = Directory(profile['text_folder']);
+  Future<void> _loadSongsFromInternal() async {
+    final dir = Directory('${(await getApplicationDocumentsDirectory()).path}/txt');
     if (!dir.existsSync()) return;
 
     final files = dir
