@@ -5,8 +5,8 @@ import "../widgets/song_controls_widget.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
-import '../widgets/attachment_button.dart';
 import '../widgets/scroll_control_widget.dart';
+import '../../profile_setup/controllers/active_profile_controller.dart';
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -37,12 +37,15 @@ class _SongViewScreenState extends State<SongViewScreen> {
   void initState() {
     super.initState();
     SongSettingsController.loadSettings().then((_) {
-      _loadSongsFromInternal();
+      _loadSongsFromProfile();
     });
   }
 
-  Future<void> _loadSongsFromInternal() async {
-    final dir = Directory('${(await getApplicationDocumentsDirectory()).path}/txt');
+  Future<void> _loadSongsFromProfile() async {
+    final profile = await ActiveProfileController.getActiveProfileData();
+    if (profile == null || profile['lyricsPath'] == null) return;
+
+    final dir = Directory(profile['lyricsPath']);
     if (!dir.existsSync()) return;
 
     final files = dir

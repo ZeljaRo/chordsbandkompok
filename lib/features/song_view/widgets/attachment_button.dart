@@ -1,7 +1,7 @@
 import "dart:io";
 import "package:flutter/material.dart";
 import "package:open_file/open_file.dart";
-import "../../profile_setup/controllers/current_profile_loader.dart";
+import "../../profile_setup/controllers/active_profile_controller.dart";
 import "../controllers/song_settings_controller.dart";
 
 class AttachmentButton extends StatefulWidget {
@@ -19,9 +19,7 @@ class _AttachmentButtonState extends State<AttachmentButton> {
   @override
   void initState() {
     super.initState();
-    if (widget.songName != null) {
-      currentFile = SongSettingsController.getAttachment(widget.songName!);
-    }
+    _refreshFile();
   }
 
   void _refreshFile() {
@@ -35,22 +33,23 @@ class _AttachmentButtonState extends State<AttachmentButton> {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: currentFile ?? "Nema prateæeg fajla",
+      message: currentFile ?? "Nema prateÄ‡eg fajla",
       child: IconButton(
         icon: const Icon(Icons.attach_file),
         onPressed: () async {
           if (widget.songName == null) return;
 
-          final profile = await CurrentProfileLoader.loadLastProfile();
-          if (profile == null || profile['media_folder'] == null) return;
-          final dir = Directory(profile['media_folder']);
+          final profile = await ActiveProfileController.getActiveProfileData();
+          if (profile == null || profile['mediaPath'] == null) return;
+
+          final dir = Directory(profile['mediaPath']);
           if (!dir.existsSync()) return;
 
           if (currentFile != null) {
             final choice = await showDialog<String>(
               context: context,
               builder: (ctx) => SimpleDialog(
-                title: const Text("Prateæi fajl"),
+                title: const Text("PrateÄ‡i fajl"),
                 children: [
                   SimpleDialogOption(
                     child: const Text("Otvori fajl"),
@@ -86,7 +85,7 @@ class _AttachmentButtonState extends State<AttachmentButton> {
           final selected = await showDialog<String>(
             context: context,
             builder: (ctx) => SimpleDialog(
-              title: const Text("Odaberi prateæi fajl"),
+              title: const Text("Odaberi prateÄ‡i fajl"),
               children: files.map((file) {
                 return SimpleDialogOption(
                   child: Text(file),

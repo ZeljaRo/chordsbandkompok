@@ -1,17 +1,17 @@
 import "dart:convert";
 import "dart:io";
-import "../../profile_setup/controllers/current_profile_loader.dart";
+import "../../profile_setup/controllers/active_profile_controller.dart";
 
 class SetlistManager {
   static Future<void> addSong(String songName, String setlistName) async {
-    final profile = await CurrentProfileLoader.loadLastProfile();
-    final folderPath = profile?['text_folder'];
-    if (folderPath == null) return;
+    final profile = await ActiveProfileController.getActiveProfileData();
+    final basePath = profile?['lyricsPath'];
+    if (basePath == null) return;
 
-    final folder = Directory("$folderPath\\setlists");
+    final folder = Directory("$basePath/setlists");
     if (!folder.existsSync()) folder.createSync(recursive: true);
 
-    final file = File("${folder.path}\\$setlistName.json");
+    final file = File("${folder.path}/$setlistName.json");
 
     List<String> songs = [];
     if (file.existsSync()) {

@@ -310,16 +310,17 @@ class LanguageSelectScreen extends StatelessWidget {
 === C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/profile_setup/controllers/current_profile_loaderdart ===
 import 'dart:convert';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class CurrentProfileLoader {
   static Future<Map<String, dynamic>?> loadLastProfile() async {
-    final file = File('profiles.json');
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/profiles.json');
     if (!file.existsSync()) return null;
 
     final content = await file.readAsString();
     final profiles = List<Map<String, dynamic>>.from(jsonDecode(content));
 
-    // Vraća zadnji spremljeni (zadnji u listi)
     if (profiles.isEmpty) return null;
     return profiles.last;
   }
@@ -1347,8 +1348,8 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
 === C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/screens/song_view_screendart ===
 import "package:flutter/material.dart";
 import "dart:io";
+import "package:path_provider/path_provider.dart";
 import "../widgets/song_controls_widget.dart";
-import "../../profile_setup/controllers/current_profile_loader.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
@@ -1384,15 +1385,12 @@ class _SongViewScreenState extends State<SongViewScreen> {
   void initState() {
     super.initState();
     SongSettingsController.loadSettings().then((_) {
-      _loadSongsFromProfile();
+      _loadSongsFromInternal();
     });
   }
 
-  Future<void> _loadSongsFromProfile() async {
-    final profile = await CurrentProfileLoader.loadLastProfile();
-    if (profile == null || profile['text_folder'] == null) return;
-
-    final dir = Directory(profile['text_folder']);
+  Future<void> _loadSongsFromInternal() async {
+    final dir = Directory('${(await getApplicationDocumentsDirectory()).path}/txt');
     if (!dir.existsSync()) return;
 
     final files = dir
@@ -2111,6 +2109,81 @@ class SongControlsWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/widgets/song_text_containerdart ===
+import 'package:flutter/material.dart';
+import 'package:chordsbandkompok/features/song_view/widgets/attachment_button.dart';
+
+class SongTextContainer extends StatelessWidget {
+  final String songText;
+  final String songFilename;
+
+  const SongTextContainer({
+    Key? key,
+    required this.songText,
+    required this.songFilename,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: SelectableText(songText),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: AttachmentButton(songName: songFilename),
+        ),
+      ],
+    );
+  }
+}
+
+
+
+=== C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/widgets/song_view_bodydart ===
+import 'package:flutter/material.dart';
+import '../../internal_file/utils/song_loader.dart';
+import '../widgets/song_text_container.dart';
+
+class SongViewBody extends StatefulWidget {
+  final String filePath;
+
+  const SongViewBody({super.key, required this.filePath});
+
+  @override
+  State<SongViewBody> createState() => _SongViewBodyState();
+}
+
+class _SongViewBodyState extends State<SongViewBody> {
+  String _songText = '';
+  String _filename = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSong();
+  }
+
+  Future<void> _loadSong() async {
+    final content = await SongLoader.loadFromInternalPath(widget.filePath);
+    setState(() {
+      _songText = content;
+      _filename = widget.filePath.split('/').last;
+    });
+    debugPrint('[SONG] UÄŤitana pjesma: $_filename');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SongTextContainer(songText: _songText, songFilename: _filename);
   }
 }
 

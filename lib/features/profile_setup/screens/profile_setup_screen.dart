@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'dart:convert';
 
 import '../controllers/profile_controller.dart';
+import '../controllers/active_profile_controller.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -35,38 +37,40 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _loadProfiles();
   }
 
-  Future<String?> _copyToInternal(String? path, String folderName) async {
-    if (path == null) return null;
-    final dir = await getApplicationDocumentsDirectory();
-    final newPath = '${dir.path}/$folderName';
-    final newDir = Directory(newPath);
-    if (!await newDir.exists()) {
-      await newDir.create(recursive: true);
+  Future<String?> _copyFolderToProfile(String? sourcePath, String profileName, String subfolderName, String fileExtension) async {
+    if (sourcePath == null) return null;
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final profilePath = '${appDir.path}/profiles/$profileName/$subfolderName';
+    final profileDir = Directory(profilePath);
+
+    if (!await profileDir.exists()) {
+      await profileDir.create(recursive: true);
     }
 
-    final sourceDir = Directory(path);
+    final sourceDir = Directory(sourcePath);
     final files = sourceDir
         .listSync()
         .whereType<File>()
-        .where((f) => f.path.toLowerCase().endsWith('.txt'))
+        .where((f) => f.path.toLowerCase().endsWith(fileExtension))
         .toList();
 
     for (var file in files) {
       final fileName = file.uri.pathSegments.last;
-      final newFile = File('$newPath/$fileName');
+      final newFile = File('$profilePath/$fileName');
       if (!await newFile.exists()) {
         await file.copy(newFile.path);
       }
     }
-    return newPath;
+
+    return profilePath;
   }
 
   Future<void> _pickTextFolder() async {
     final result = await getDirectoryPath();
     if (result != null) {
-      final copiedPath = await _copyToInternal(result, 'txt');
       setState(() {
-        _selectedTextFolder = copiedPath;
+        _selectedTextFolder = result;
       });
     }
   }
@@ -74,9 +78,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Future<void> _pickMediaFolder() async {
     final result = await getDirectoryPath();
     if (result != null) {
-      final copiedPath = await _copyToInternal(result, 'media');
       setState(() {
-        _selectedMediaFolder = copiedPath;
+        _selectedMediaFolder = result;
       });
     }
   }
@@ -94,10 +97,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return;
     }
 
+    final lyricsPath = await _copyFolderToProfile(text, name, 'txt', '.txt');
+    final attachmentsPath = await _copyFolderToProfile(media, name, 'attachments', '');
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final profileDir = Directory('${appDir.path}/profiles/$name');
+    final settingsFile = File('${profileDir.path}/settings.json');
+    if (!await settingsFile.exists()) {
+      await settingsFile.writeAsString('{}');
+    }
+
     await ProfileController.saveProfile(
       name: name,
-      lyricsPath: text,
-      mediaPath: media,
+      lyricsPath: lyricsPath ?? '',
+      mediaPath: attachmentsPath ?? '',
       connection: conn,
     );
 
@@ -163,7 +176,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      final name = p['name'];
+                      await ActiveProfileController.setActiveProfile(name);
+
+                      final appDir = await getApplicationDocumentsDirectory();
+                      final profilePath = '${appDir.path}/profiles/$name';
+                      final txtDir = Directory('$profilePath/txt');
+                      final attachmentsDir = Directory('$profilePath/attachments');
+                      final settingsFile = File('$profilePath/settings.json');
+
+                      if (!await txtDir.exists()) await txtDir.create(recursive: true);
+                      if (!await attachmentsDir.exists()) await attachmentsDir.create(recursive: true);
+                      if (!await settingsFile.exists()) {
+                        await settingsFile.writeAsString('{}');
+                      }
+
                       setState(() {
                         _selectedProfile = p;
                       });

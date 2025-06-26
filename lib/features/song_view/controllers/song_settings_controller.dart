@@ -1,22 +1,33 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../profile_setup/controllers/active_profile_controller.dart';
 import '../utils/settings_sanitizer.dart';
 
 class SongSettingsController {
-  static const String _filePath = 'settings.json';
   static Map<String, dynamic> _settings = {};
 
+  static Future<File?> _getSettingsFile() async {
+    final profile = await ActiveProfileController.getActiveProfileData();
+    if (profile == null || profile['lyricsPath'] == null) return null;
+
+    final settingsPath = '${profile['lyricsPath']}/../settings.json';
+    final file = File(settingsPath);
+    return file;
+  }
+
   static Future<void> loadSettings() async {
-    final file = File(_filePath);
-    if (file.existsSync()) {
-      final content = await file.readAsString();
-      _settings = jsonDecode(content);
-    }
+    final file = await _getSettingsFile();
+    if (file == null || !file.existsSync()) return;
+
+    final content = await file.readAsString();
+    _settings = jsonDecode(content);
   }
 
   static Future<void> saveSettings() async {
-    final file = File(_filePath);
+    final file = await _getSettingsFile();
+    if (file == null) return;
+
     await file.writeAsString(jsonEncode(_settings));
   }
 
