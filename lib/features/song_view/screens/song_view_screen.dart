@@ -7,6 +7,7 @@ import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
 import '../widgets/scroll_control_widget.dart';
 import '../../profile_setup/controllers/active_profile_controller.dart';
+import '../widgets/attachment_button.dart'; // ← potrebno jer više nije u controls
 
 class SongViewScreen extends StatefulWidget {
   const SongViewScreen({super.key});
@@ -185,13 +186,14 @@ class _SongViewScreenState extends State<SongViewScreen> {
                 ),
                 const Divider(),
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousSong),
-                      const SizedBox(width: 16),
+                      const Spacer(),
                       IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _nextSong),
+                      const SizedBox(width: 8),
+                      AttachmentButton(songName: _songName),
                     ],
                   ),
                 ),

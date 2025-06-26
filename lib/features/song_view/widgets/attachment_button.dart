@@ -22,6 +22,14 @@ class _AttachmentButtonState extends State<AttachmentButton> {
     _refreshFile();
   }
 
+  @override
+  void didUpdateWidget(covariant AttachmentButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.songName != widget.songName) {
+      _refreshFile();
+    }
+  }
+
   void _refreshFile() {
     if (widget.songName != null) {
       setState(() {

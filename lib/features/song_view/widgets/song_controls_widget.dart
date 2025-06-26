@@ -47,7 +47,6 @@ class SongControlsWidget extends StatelessWidget {
             ElevatedButton(onPressed: () {}, child: const Text("OUT")),
             IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut),
             IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn),
-            AttachmentButton(songName: songName),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () async {
