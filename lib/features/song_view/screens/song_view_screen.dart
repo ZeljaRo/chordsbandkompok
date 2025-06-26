@@ -185,14 +185,22 @@ class _SongViewScreenState extends State<SongViewScreen> {
                 ),
                 const Divider(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+                  padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousSong),
-                      Text(_songName ?? 'Pjesma', style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 16),
                       IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _nextSong),
                     ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    _songName ?? 'Pjesma',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
                   ),
                 ),
                 Expanded(
