@@ -44,4 +44,12 @@ class ProfileController {
     final decoded = jsonDecode(content);
     return List<Map<String, dynamic>>.from(decoded);
   }
+
+  static Future<void> deleteProfile(String name) async {
+    final profiles = await loadProfiles();
+    final updated = profiles.where((p) => p['name'] != name).toList();
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/profiles.json');
+    await file.writeAsString(jsonEncode(updated));
+  }
 }

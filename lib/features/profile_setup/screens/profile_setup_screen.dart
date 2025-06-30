@@ -121,6 +121,34 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
   }
 
+  Future<void> _confirmDelete(String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Potvrda'),
+        content: Text('Želite li sigurno obrisati profil "$name"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('NE'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('DA'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ProfileController.deleteProfile(name);
+      await _loadProfiles();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil obrisan.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,74 +157,103 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         padding: const EdgeInsets.all(20.0),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Text('Ime profila (max 7 znakova):'),
-              TextField(
-                controller: _nameController,
-                maxLength: 7,
-                decoration: const InputDecoration(hintText: 'Unesi ime'),
+              SizedBox(
+                width: 200,
+                child: TextField(
+                  controller: _nameController,
+                  maxLength: 7,
+                  decoration: const InputDecoration(hintText: 'Unesi ime'),
+                ),
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _pickTextFolder,
-                child: Text(_selectedTextFolder ?? 'Odaberi mapu s tekstovima'),
+              SizedBox(
+                width: 300,
+                child: ElevatedButton(
+                  onPressed: _pickTextFolder,
+                  child: Text(_selectedTextFolder ?? 'Odaberi mapu s tekstovima'),
+                ),
               ),
               const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _pickMediaFolder,
-                child: Text(_selectedMediaFolder ?? 'Odaberi prateću mapu'),
+              SizedBox(
+                width: 300,
+                child: ElevatedButton(
+                  onPressed: _pickMediaFolder,
+                  child: Text(_selectedMediaFolder ?? 'Odaberi prateću mapu'),
+                ),
               ),
               const SizedBox(height: 20),
               const Text('Odaberi vezu:'),
-              DropdownButton<String>(
-                isExpanded: true,
-                hint: const Text('Veza'),
-                value: _selectedConnection,
-                items: const [
-                  DropdownMenuItem(value: 'WiFi', child: Text('WiFi')),
-                  DropdownMenuItem(value: 'Hotspot', child: Text('Hotspot')),
-                  DropdownMenuItem(value: 'Bluetooth', child: Text('Bluetooth')),
-                  DropdownMenuItem(value: 'Nema', child: Text('Bez veze')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedConnection = value;
-                  });
-                },
+              SizedBox(
+                width: 200,
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  hint: const Text('Veza'),
+                  value: _selectedConnection,
+                  items: const [
+                    DropdownMenuItem(value: 'WiFi', child: Text('WiFi')),
+                    DropdownMenuItem(value: 'Hotspot', child: Text('Hotspot')),
+                    DropdownMenuItem(value: 'Bluetooth', child: Text('Bluetooth')),
+                    DropdownMenuItem(value: 'Nema', child: Text('Bez veze')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedConnection = value;
+                    });
+                  },
+                ),
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saveProfile,
-                child: const Text('SPREMI PROFIL'),
+              SizedBox(
+                width: 150,
+                child: ElevatedButton(
+                  onPressed: _saveProfile,
+                  child: const Text('SPREMI PROFIL'),
+                ),
               ),
               const Divider(height: 40),
               const Text('Dostupni profili:'),
+              const SizedBox(height: 10),
               for (var p in _profiles)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final name = p['name'];
-                      await ActiveProfileController.setActiveProfile(name);
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 120,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final name = p['name'];
+                            await ActiveProfileController.setActiveProfile(name);
 
-                      final appDir = await getApplicationDocumentsDirectory();
-                      final profilePath = '${appDir.path}/profiles/$name';
-                      final txtDir = Directory('$profilePath/txt');
-                      final attachmentsDir = Directory('$profilePath/attachments');
-                      final settingsFile = File('$profilePath/settings.json');
+                            final appDir = await getApplicationDocumentsDirectory();
+                            final profilePath = '${appDir.path}/profiles/$name';
+                            final txtDir = Directory('$profilePath/txt');
+                            final attachmentsDir = Directory('$profilePath/attachments');
+                            final settingsFile = File('$profilePath/settings.json');
 
-                      if (!await txtDir.exists()) await txtDir.create(recursive: true);
-                      if (!await attachmentsDir.exists()) await attachmentsDir.create(recursive: true);
-                      if (!await settingsFile.exists()) {
-                        await settingsFile.writeAsString('{}');
-                      }
+                            if (!await txtDir.exists()) await txtDir.create(recursive: true);
+                            if (!await attachmentsDir.exists()) await attachmentsDir.create(recursive: true);
+                            if (!await settingsFile.exists()) {
+                              await settingsFile.writeAsString('{}');
+                            }
 
-                      setState(() {
-                        _selectedProfile = p;
-                      });
-                    },
-                    child: Text(p['name']),
+                            setState(() {
+                              _selectedProfile = p;
+                            });
+                          },
+                          child: Text(p['name']),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => _confirmDelete(p['name']),
+                      ),
+                    ],
                   ),
                 ),
               const SizedBox(height: 20),
