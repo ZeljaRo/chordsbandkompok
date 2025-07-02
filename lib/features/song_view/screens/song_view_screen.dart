@@ -1,16 +1,20 @@
 import "package:flutter/material.dart";
 import "dart:io";
 import "package:path_provider/path_provider.dart";
+import "package:go_router/go_router.dart"; // Dodano za kontekst
+
 import "../widgets/song_controls_widget.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
 import '../widgets/scroll_control_widget.dart';
 import '../../profile_setup/controllers/active_profile_controller.dart';
-import '../widgets/attachment_button.dart'; // ← potrebno jer više nije u controls
+import '../widgets/attachment_button.dart';
 
 class SongViewScreen extends StatefulWidget {
-  const SongViewScreen({super.key});
+  final String? fileName; // novi parametar
+
+  const SongViewScreen({super.key, this.fileName}); // prilagođeni konstruktor
 
   @override
   State<SongViewScreen> createState() => _SongViewScreenState();
@@ -57,12 +61,25 @@ class _SongViewScreenState extends State<SongViewScreen> {
 
     if (files.isEmpty) return;
 
+    files.sort((a, b) => a.path.compareTo(b.path));
+
     setState(() {
       _allSongs = files;
-      _currentIndex = 0;
     });
 
-    _loadSongAt(_currentIndex);
+    // ➤ ako je kliknuto iz pretrage, traži index fajla
+    if (widget.fileName != null) {
+      final index = files.indexWhere((f) => f.uri.pathSegments.last == widget.fileName);
+      if (index != -1) {
+        _currentIndex = index;
+        await _loadSongAt(index);
+        return;
+      }
+    }
+
+    // ➤ fallback: prvi fajl
+    _currentIndex = 0;
+    await _loadSongAt(0);
   }
 
   Future<void> _loadSongAt(int index) async {

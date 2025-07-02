@@ -319,33 +319,34 @@ import 'package:flutter/material.dart';
 
 class ProfileButtons extends StatelessWidget {
   final List<String> profiles;
-  final Function(String) onProfileSelected;
-  final Function(String) onProfileDelete;
+  final void Function(String) onProfileSelected;
+  final void Function(String) onProfileDelete;
 
   const ProfileButtons({
-    Key? key,
+    super.key,
     required this.profiles,
     required this.onProfileSelected,
     required this.onProfileDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: profiles
-          .expand((profile) => [
-                // Prvo dugme: otvaranje profila
-                ElevatedButton(
-                  onPressed: () => onProfileSelected(profile),
-                  child: Text(profile),
-                ),
-                // Drugo dugme: takoÄ‘er otvara isti profil (test)
-                ElevatedButton(
-                  onPressed: () => onProfileSelected(profile),
-                  child: Text("Otvoriti: $profile"),
-                ),
-              ])
-          .toList(),
+    return ListView.builder(
+      itemCount: profiles.length,
+      itemBuilder: (context, index) {
+        final name = profiles[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          child: ListTile(
+            title: Text(name),
+            onTap: () => onProfileSelected(name),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => onProfileDelete(name),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -416,30 +417,32 @@ class _ProfileSelectorScreenState extends State<ProfileSelectorScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // TEST DUGME NA VRHU
-            TextButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("TEST DUGME je pritisnuto")),
-                );
-              },
-              child: const Text("TEST DUGME"),
+            // Primjer testnog ograniÄŤenja Ĺˇirine za unos imena profila (ako postoji)
+            Row(
+              children: [
+                SizedBox(
+                  width: 200,
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Unesi ime profila',
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // Glavni prikaz profila ili poruke
             Expanded(
               child: profiles.isNotEmpty
                   ? ListView.builder(
                       itemCount: profiles.length,
                       itemBuilder: (context, index) {
-                        final name = profiles[index];
                         return ListTile(
-                          title: Text(name),
-                          onTap: () => _selectProfile(name),
+                          title: Text(profiles[index]),
+                          onTap: () => _selectProfile(profiles[index]),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteProfile(name),
+                            onPressed: () => _deleteProfile(profiles[index]),
                           ),
                         );
                       },
@@ -448,6 +451,7 @@ class _ProfileSelectorScreenState extends State<ProfileSelectorScreen> {
             ),
 
             const SizedBox(height: 16),
+
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -575,6 +579,14 @@ class ProfileController {
     final content = await file.readAsString();
     final decoded = jsonDecode(content);
     return List<Map<String, dynamic>>.from(decoded);
+  }
+
+  static Future<void> deleteProfile(String name) async {
+    final profiles = await loadProfiles();
+    final updated = profiles.where((p) => p['name'] != name).toList();
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/profiles.json');
+    await file.writeAsString(jsonEncode(updated));
   }
 }
 
@@ -753,6 +765,34 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
   }
 
+  Future<void> _confirmDelete(String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Potvrda'),
+        content: Text('Ĺ˝elite li sigurno obrisati profil "$name"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('NE'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('DA'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ProfileController.deleteProfile(name);
+      await _loadProfiles();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil obrisan.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -761,74 +801,103 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         padding: const EdgeInsets.all(20.0),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Text('Ime profila (max 7 znakova):'),
-              TextField(
-                controller: _nameController,
-                maxLength: 7,
-                decoration: const InputDecoration(hintText: 'Unesi ime'),
+              SizedBox(
+                width: 200,
+                child: TextField(
+                  controller: _nameController,
+                  maxLength: 7,
+                  decoration: const InputDecoration(hintText: 'Unesi ime'),
+                ),
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _pickTextFolder,
-                child: Text(_selectedTextFolder ?? 'Odaberi mapu s tekstovima'),
+              SizedBox(
+                width: 300,
+                child: ElevatedButton(
+                  onPressed: _pickTextFolder,
+                  child: Text(_selectedTextFolder ?? 'Odaberi mapu s tekstovima'),
+                ),
               ),
               const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _pickMediaFolder,
-                child: Text(_selectedMediaFolder ?? 'Odaberi prateÄ‡u mapu'),
+              SizedBox(
+                width: 300,
+                child: ElevatedButton(
+                  onPressed: _pickMediaFolder,
+                  child: Text(_selectedMediaFolder ?? 'Odaberi prateÄ‡u mapu'),
+                ),
               ),
               const SizedBox(height: 20),
               const Text('Odaberi vezu:'),
-              DropdownButton<String>(
-                isExpanded: true,
-                hint: const Text('Veza'),
-                value: _selectedConnection,
-                items: const [
-                  DropdownMenuItem(value: 'WiFi', child: Text('WiFi')),
-                  DropdownMenuItem(value: 'Hotspot', child: Text('Hotspot')),
-                  DropdownMenuItem(value: 'Bluetooth', child: Text('Bluetooth')),
-                  DropdownMenuItem(value: 'Nema', child: Text('Bez veze')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedConnection = value;
-                  });
-                },
+              SizedBox(
+                width: 200,
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  hint: const Text('Veza'),
+                  value: _selectedConnection,
+                  items: const [
+                    DropdownMenuItem(value: 'WiFi', child: Text('WiFi')),
+                    DropdownMenuItem(value: 'Hotspot', child: Text('Hotspot')),
+                    DropdownMenuItem(value: 'Bluetooth', child: Text('Bluetooth')),
+                    DropdownMenuItem(value: 'Nema', child: Text('Bez veze')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedConnection = value;
+                    });
+                  },
+                ),
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saveProfile,
-                child: const Text('SPREMI PROFIL'),
+              SizedBox(
+                width: 150,
+                child: ElevatedButton(
+                  onPressed: _saveProfile,
+                  child: const Text('SPREMI PROFIL'),
+                ),
               ),
               const Divider(height: 40),
               const Text('Dostupni profili:'),
+              const SizedBox(height: 10),
               for (var p in _profiles)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final name = p['name'];
-                      await ActiveProfileController.setActiveProfile(name);
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 120,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final name = p['name'];
+                            await ActiveProfileController.setActiveProfile(name);
 
-                      final appDir = await getApplicationDocumentsDirectory();
-                      final profilePath = '${appDir.path}/profiles/$name';
-                      final txtDir = Directory('$profilePath/txt');
-                      final attachmentsDir = Directory('$profilePath/attachments');
-                      final settingsFile = File('$profilePath/settings.json');
+                            final appDir = await getApplicationDocumentsDirectory();
+                            final profilePath = '${appDir.path}/profiles/$name';
+                            final txtDir = Directory('$profilePath/txt');
+                            final attachmentsDir = Directory('$profilePath/attachments');
+                            final settingsFile = File('$profilePath/settings.json');
 
-                      if (!await txtDir.exists()) await txtDir.create(recursive: true);
-                      if (!await attachmentsDir.exists()) await attachmentsDir.create(recursive: true);
-                      if (!await settingsFile.exists()) {
-                        await settingsFile.writeAsString('{}');
-                      }
+                            if (!await txtDir.exists()) await txtDir.create(recursive: true);
+                            if (!await attachmentsDir.exists()) await attachmentsDir.create(recursive: true);
+                            if (!await settingsFile.exists()) {
+                              await settingsFile.writeAsString('{}');
+                            }
 
-                      setState(() {
-                        _selectedProfile = p;
-                      });
-                    },
-                    child: Text(p['name']),
+                            setState(() {
+                              _selectedProfile = p;
+                            });
+                          },
+                          child: Text(p['name']),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => _confirmDelete(p['name']),
+                      ),
+                    ],
                   ),
                 ),
               const SizedBox(height: 20),
