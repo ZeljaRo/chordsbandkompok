@@ -32,6 +32,7 @@ class MyApp extends StatelessWidget {
 === C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/app/routerdart ===
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../features/language/screens/language_select_screen.dart';
 import '../features/profile_setup/screens/profile_setup_screen.dart';
 import '../features/song_view/screens/song_view_screen.dart';
@@ -52,7 +53,10 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/song-view',
-      builder: (context, state) => const SongViewScreen(),
+      builder: (context, state) {
+        final file = state.uri.queryParameters['file'];
+        return SongViewScreen(fileName: file);
+      },
     ),
     GoRoute(
       path: '/song-settings',
@@ -1470,12 +1474,10 @@ class _SongEditScreenState extends State<SongEditScreen> {
 
 
 === C:/Users/Korisnik/Documents/projekti/chordsbandkompok/lib/features/song_view/screens/song_search_screendart ===
-import "dart:io";
-import "package:flutter/material.dart";
-import "package:go_router/go_router.dart";
-import "../../profile_setup/controllers/current_profile_loader.dart";
-import "../utils/setlist_manager.dart";
-import "../widgets/setlist_controls_widget.dart";
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../profile_setup/controllers/active_profile_controller.dart';
 
 class SongSearchScreen extends StatefulWidget {
   const SongSearchScreen({super.key});
@@ -1487,85 +1489,72 @@ class SongSearchScreen extends StatefulWidget {
 class _SongSearchScreenState extends State<SongSearchScreen> {
   List<String> allSongs = [];
   List<String> filteredSongs = [];
-  String searchQuery = "";
-  String? activeSetlistName;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadSongs();
+    _searchController.addListener(_filterSongs);
   }
 
   Future<void> _loadSongs() async {
-    final profile = await CurrentProfileLoader.loadLastProfile();
-    final folderPath = profile?['text_folder'];
+    final profile = await ActiveProfileController.getActiveProfileData();
+    final lyricsPath = profile?['lyricsPath'];
+    if (lyricsPath == null) return;
 
-    if (folderPath == null) return;
+    final dir = Directory(lyricsPath);
+    if (!dir.existsSync()) return;
 
-    final folder = Directory(folderPath);
-    if (!folder.existsSync()) return;
-
-    final txtFiles = folder
+    final files = dir
         .listSync()
         .whereType<File>()
-        .where((file) => file.path.toLowerCase().endsWith(".txt"))
-        .map((file) => file.uri.pathSegments.last)
+        .where((file) => file.path.toLowerCase().endsWith('.txt'))
         .toList();
 
+    final songNames = files.map((f) => f.uri.pathSegments.last).toList();
+
     setState(() {
-      allSongs = txtFiles;
-      filteredSongs = txtFiles;
+      allSongs = songNames;
+      filteredSongs = songNames;
     });
   }
 
-  void _filterSongs(String query) {
+  void _filterSongs() {
+    final query = _searchController.text.toLowerCase();
     setState(() {
-      searchQuery = query;
       filteredSongs = allSongs
-          .where((song) => song.toLowerCase().contains(query.toLowerCase()))
+          .where((song) => song.toLowerCase().contains(query))
           .toList();
     });
   }
 
-  void _setActiveSetlist(String name) {
-    setState(() {
-      activeSetlistName = name;
-    });
+  void _openSong(String fileName) {
+    context.go('/song-view?file=$fileName');
   }
 
-  void _addToSetlist(String song) {
-    if (activeSetlistName == null) return;
-    SetlistManager.addSong(song, activeSetlistName!);
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Pretraga pjesama")),
+      appBar: AppBar(title: const Text('Pretraga pjesama')),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(12),
             child: TextField(
-              onChanged: _filterSongs,
+              controller: _searchController,
               decoration: const InputDecoration(
-                labelText: "Pretraži...",
+                labelText: 'PretraĹľi pjesme...',
                 border: OutlineInputBorder(),
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: SetlistControlsWidget(
-              onSetlistCreated: _setActiveSetlist,
-            ),
-          ),
-          if (activeSetlistName != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text("Aktivna lista: $activeSetlistName"),
-            ),
-          const SizedBox(height: 8),
           Expanded(
             child: ListView.builder(
               itemCount: filteredSongs.length,
@@ -1573,15 +1562,7 @@ class _SongSearchScreenState extends State<SongSearchScreen> {
                 final song = filteredSongs[index];
                 return ListTile(
                   title: Text(song),
-                  onTap: () {
-                    context.go("/song-view?file=$song");
-                  },
-                  trailing: IconButton(
-                    icon: const Icon(Icons.playlist_add),
-                    onPressed: () {
-                      _addToSetlist(song);
-                    },
-                  ),
+                  onTap: () => _openSong(song),
                 );
               },
             ),
@@ -1753,16 +1734,20 @@ class _SongSettingsScreenState extends State<SongSettingsScreen> {
 import "package:flutter/material.dart";
 import "dart:io";
 import "package:path_provider/path_provider.dart";
+import "package:go_router/go_router.dart"; // Dodano za kontekst
+
 import "../widgets/song_controls_widget.dart";
 import "../utils/transpose_helper.dart";
 import "../utils/rich_song_parser.dart";
 import "../controllers/song_settings_controller.dart";
 import '../widgets/scroll_control_widget.dart';
 import '../../profile_setup/controllers/active_profile_controller.dart';
-import '../widgets/attachment_button.dart'; // â† potrebno jer viĹˇe nije u controls
+import '../widgets/attachment_button.dart';
 
 class SongViewScreen extends StatefulWidget {
-  const SongViewScreen({super.key});
+  final String? fileName; // novi parametar
+
+  const SongViewScreen({super.key, this.fileName}); // prilagoÄ‘eni konstruktor
 
   @override
   State<SongViewScreen> createState() => _SongViewScreenState();
@@ -1809,12 +1794,25 @@ class _SongViewScreenState extends State<SongViewScreen> {
 
     if (files.isEmpty) return;
 
+    files.sort((a, b) => a.path.compareTo(b.path));
+
     setState(() {
       _allSongs = files;
-      _currentIndex = 0;
     });
 
-    _loadSongAt(_currentIndex);
+    // âž¤ ako je kliknuto iz pretrage, traĹľi index fajla
+    if (widget.fileName != null) {
+      final index = files.indexWhere((f) => f.uri.pathSegments.last == widget.fileName);
+      if (index != -1) {
+        _currentIndex = index;
+        await _loadSongAt(index);
+        return;
+      }
+    }
+
+    // âž¤ fallback: prvi fajl
+    _currentIndex = 0;
+    await _loadSongAt(0);
   }
 
   Future<void> _loadSongAt(int index) async {
