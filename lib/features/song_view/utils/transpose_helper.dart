@@ -22,7 +22,12 @@ class TransposeHelper {
     final regex = RegExp(r'\(([^\)]+)\)');
     return line.replaceAllMapped(regex, (match) {
       final original = match.group(1)!;
-      return '(${_transposeChord(original, steps)})';
+
+      // Podrška za više akorda unutar iste zagrade, odvojenih zarezima
+      final chords = original.split(',').map((e) => e.trim()).toList();
+      final transposedChords =
+          chords.map((chord) => _transposeChord(chord, steps)).toList();
+      return '(${transposedChords.join(',')})';
     });
   }
 
@@ -55,7 +60,7 @@ class TransposeHelper {
       result = map[result] ?? result;
     }
 
-    // Vrati stil originala (case-sensitive)
+    // Zadrži format originalnog unosa (case-sensitive)
     if (input == input.toLowerCase()) {
       return result.toLowerCase();
     } else if (input[0] == input[0].toLowerCase()) {
